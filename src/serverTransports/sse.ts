@@ -37,12 +37,12 @@ export async function startSSETransport(config: ProxyConfig, proxiedMcpServer: P
 
         // Session close handler
         req.on('close', () => {
-        logger.info('SSE connection closed for session:', transport.sessionId);
-        const session = activeSessions.get(transport.sessionId!);
-        if (session) {
-            session.close();
-            activeSessions.delete(session.id);
-        }
+            logger.info('SSE connection closed for session:', transport.sessionId);
+            const session = activeSessions.get(transport.sessionId!);
+            if (session) {
+                session.close();
+                activeSessions.delete(session.id);
+            }
         });
     });
 

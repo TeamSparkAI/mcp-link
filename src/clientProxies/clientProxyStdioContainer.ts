@@ -41,20 +41,20 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
             });
 
             events.on('data', (chunk) => {
-            const event = JSON.parse(chunk.toString());
-            if (event.Type === 'container' && event.Action === 'die') {
-                const containerSessionId = event.Actor.Attributes['mcp.sessionId'];
-                logger.info('Container stopped for sessionId:', containerSessionId);
-                const session = this.activeSessions.get(containerSessionId);
-                if (session) {
-                session.close();
-                this.activeSessions.delete(session.id);
+                const event = JSON.parse(chunk.toString());
+                if (event.Type === 'container' && event.Action === 'die') {
+                    const containerSessionId = event.Actor.Attributes['mcp.sessionId'];
+                    logger.info('Container stopped for sessionId:', containerSessionId);
+                    const session = this.activeSessions.get(containerSessionId);
+                    if (session) {
+                        session.close();
+                        this.activeSessions.delete(session.id);
+                    }
                 }
-            }
             });
 
             events.on('error', (err) => {
-            logger.error('Error receiving Docker events:', err);
+                logger.error('Error receiving Docker events:', err);
             });
 
             logger.info('Listening for Docker container stop events...');
