@@ -1,0 +1,29 @@
+# TeamSpark MCP Bridge TODO
+
+## Session Termination
+
+We need a mechanism for the proxied MCP server to terminate its current session.
+
+For example, if the stdio process exits, or an stdio-container container shuts down, we need a way to notify
+the session bridge, and for the session bridge to notify the server and terminate the session.
+
+## Testing
+
+We need to define test cases (maybe or maybe not automated depending on practicality) for each permutation.
+
+### MCP Bridge Source-Target Permutations
+
+| Verified | Source Mode | Target Mode | Description |
+|----------|-------------|-------------|-------------|
+| ❌ | stdio | stdio | Direct stdio to stdio bridge |
+| ❌ | stdio | sse | Bridge stdio source to SSE endpoint |
+| ❌ | stdio | streamable | Bridge stdio source to streamable endpoint |
+| ✅ | stdio | stdio-container | Bridge stdio source to containerized stdio endpoint |
+| ❌ | sse | stdio | Bridge SSE source to stdio endpoint |
+| ❌ | sse | sse | Direct SSE to SSE bridge |
+| ❌ | sse | streamable | Bridge SSE source to streamable endpoint |
+| ✅ | sse | stdio-container | Bridge SSE source to containerized stdio endpoint |
+| ❌ | streamable | stdio | Bridge streamable source to stdio endpoint |
+| ❌ | streamable | sse | Bridge streamable source to SSE endpoint |
+| ❌ | streamable | streamable | Direct streamable to streamable bridge |
+| ❌ | streamable | stdio-container | Bridge streamable source to containerized stdio endpoint |
