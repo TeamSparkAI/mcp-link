@@ -42,10 +42,10 @@ You can also run MCP Bridge directly without installing:
 
 ```bash
 # Using npm
-npm start -- <params>
+npm start -- [options]
 
 # Or using node directly
-node src/index.js -- <params>
+node src/index.js -- [options]
 ```
 
 ## Usage
