@@ -4,7 +4,7 @@
 
 We need a mechanism for the proxied MCP server to terminate its current session.
 
-For example, if the stdio process exits, or an stdio-container container shuts down, we need a way to notify
+For example, if the stdio process exits, or a stdio-container container shuts down, we need a way to notify
 the session bridge, and for the session bridge to notify the server and terminate the session.
 
 ## Testing
