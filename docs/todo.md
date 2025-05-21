@@ -37,6 +37,10 @@ For the test client, we can just use the standard MCP client / transports from t
 ### Server
 
 We can use `everything` as our main test server fixture: https://github.com/modelcontextprotocol/servers/tree/main/src/everything
-- It can be run as stdio, sse, or streamable (port specified by PORT env var)
+- It can be run as:
+  - *stdio* (default)
+  - *sse* using arg: "sse" (port specified by PORT env var)
+  - *streamable* using arg: "streamableHttp" (port specified by PORT env var)
+  - *stdio-container*: mcp/everything
 - It has an `echo` tool that we can use to test
 - We can npm install it as a dev dependency and call that version from our tests
