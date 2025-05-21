@@ -27,3 +27,16 @@ We need to define test cases (maybe or maybe not automated depending on practica
 | ❌ | streamable | sse | Bridge streamable source to SSE endpoint |
 | ❌ | streamable | streamable | Direct streamable to streamable bridge |
 | ❌ | streamable | stdio-container | Bridge streamable source to containerized stdio endpoint |
+
+## Fixtures
+
+## Client
+
+For the test client, we can just use the standard MCP client / transports from the TypesScript SDK: https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#writing-mcp-clients
+
+### Server
+
+We can use `everything` as our main test server fixture: https://github.com/modelcontextprotocol/servers/tree/main/src/everything
+- It can be run as stdio, sse, or streamable (port specified by PORT env var)
+- It has an `echo` tool that we can use to test
+- We can npm install it as a dev dependency and call that version from our tests
