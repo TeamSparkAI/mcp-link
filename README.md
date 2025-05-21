@@ -50,27 +50,40 @@ node src/index.js -- <params>
 
 ## Usage
 
-Usage: mcpbridge [options]
+```bash
+mcpbridge [options]
+```
 
-TeamSpark AI MCP Bridge
+### Options
 
-Options:
-  --serverMode <mode>  Server mode (sse, stdio, streamable) (default: "stdio")
-  --clientMode <mode>  Client mode (stdio, sse, streamable, stdio-container) (default: "stdio-container")
-  --port <number>      Server port (default: "3000")
-  --host <string>      Server host (default: "localhost")
-  --image <string>     Client container image
-  --endpoint <string>  Client endpoint
-  --command <string>   Client command
-  --env <value>        Environment variable (key=value) (default: [])
-  --volume <value>     Volume mapping (default: [])
-  -h, --help           display help for command
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--serverMode <mode>` | Server mode (sse, stdio, streamable) | "stdio" |
+| `--clientMode <mode>` | Client mode (stdio, sse, streamable, stdio-container) | "stdio-container" |
+| `--port <number>` | Server port | "3000" |
+| `--host <string>` | Server host | "localhost" |
+| `--image <string>` | Client container image | - |
+| `--endpoint <string>` | Client endpoint | - |
+| `--command <string>` | Client command | - |
+| `--env <value>` | Environment variable (key=value) | [] |
+| `--volume <value>` | Volume mapping | [] |
+| `-h, --help` | Display help for command | - |
 
-Examples:
-  $ mcpbridge --serverMode=stdio --clientMode=stdio-container --image=mcp/fetch
-  $ mcpbridge --image=mcp/fetch
-  $ mcpbridge --serverMode=sse --port=8080 --image=mcp/fetch
-  $ mcpbridge --serverMode=streamable --clientMode=stdio --command=npx mcp-fetch
+### Examples
+
+```bash
+# Run with stdio server and container client
+mcpbridge --serverMode=stdio --clientMode=stdio-container --image=mcp/fetch
+
+# Run with default server mode and container client
+mcpbridge --image=mcp/fetch
+
+# Run with SSE server on custom port
+mcpbridge --serverMode=sse --port=8080 --image=mcp/fetch
+
+# Run with streamable server and stdio client
+mcpbridge --serverMode=streamable --clientMode=stdio --command=npx mcp-fetch
+```
 
 ## License
 
