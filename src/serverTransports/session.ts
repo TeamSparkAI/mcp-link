@@ -75,7 +75,8 @@ export abstract class BaseSession<T extends Transport = Transport> {
     async close(): Promise<void> {
         if (!this.isActive) return;
         this.isActive = false;
-        await this.transport.close();
+        logger.debug('Closing transport and session:', this.sessionId);
         await this.proxiedMcpServer.closeSession();
+        await this.transport.close();
     }
 }

@@ -43,4 +43,4 @@ We can use `everything` as our main test server fixture: https://github.com/mode
   - *streamable* using arg: "streamableHttp" (port specified by PORT env var)
   - *stdio-container*: mcp/everything
 - It has an `echo` tool that we can use to test
-- We can npm install it as a dev dependency and call that version from our tests
+- We can install @modelcontextprotocol/server-everything as a dev dependency and use that version for testing
