@@ -25,7 +25,7 @@ export class ProxiedStreamableMcpServer implements ProxiedMcpServer {
             // Create a new transport for this session
             logger.info(`Connecting to proxied Streamable endpoint: ${this.endpoint}`);
             this.streamableClient = new StreamableHTTPClientTransport(this.endpoint);
-            
+
             this.streamableClient.onmessage = async (message: JSONRPCMessage) => {
                 logger.debug(`Received message from proxied Streamable endpoint: ${message}`);
                 await session.returnMessage(message);

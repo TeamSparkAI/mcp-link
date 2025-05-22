@@ -20,7 +20,8 @@ export class ProxiedSseMcpServer implements ProxiedMcpServer {
         // Connect to the SSE endpoint
         logger.info(`Connecting to proxied SSE endpoint: ${this.endpoint}`);
         this.sseClient = new SSEClientTransport(this.endpoint);
-      
+        await this.sseClient.start();
+
         this.sseClient.onmessage = async (message: JSONRPCMessage) => {
             logger.debug(`Received message from proxied SSE endpoint: ${message}`);
             await session.returnMessage(message);

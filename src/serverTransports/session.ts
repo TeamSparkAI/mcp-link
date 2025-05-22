@@ -76,7 +76,9 @@ export abstract class BaseSession<T extends Transport = Transport> {
         if (!this.isActive) return;
         this.isActive = false;
         logger.debug('Closing transport and session:', this.sessionId);
-        await this.proxiedMcpServer.closeSession();
+        // Close our transport first to prevent any more messages from being sent
         await this.transport.close();
+        // Then close the proxied server
+        await this.proxiedMcpServer.closeSession();
     }
 }

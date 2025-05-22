@@ -20,6 +20,24 @@ export class StdioSession extends BaseSession<StdioServerTransport> {
 // {"jsonrpc":"2.0","id":18,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"mcp-client","version":"1.0.0","transport":null}}}
 //
 
+async function orderlyShutdown(session: StdioSession) {
+    logger.info('Orderly shutdown, closing session and exiting');
+    try {
+        await session.close();
+        // Give the session a chance to close and streams to flush
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Ensure all streams are properly closed
+        process.stdout.end();
+        process.stderr.end();
+        process.stdin.end();
+        // Now we can safely exit
+        process.exit(0);
+    } catch (error) {
+        logger.error('Error during orderly shutdown:', error);
+        process.exit(1);
+    }
+}
+
 export async function startStdioTransport(config: ProxyConfig, proxiedMcpServer: ProxiedMcpServer) {
     logger.info('Starting stdio transport');
 
@@ -40,14 +58,12 @@ export async function startStdioTransport(config: ProxyConfig, proxiedMcpServer:
 
     // Handle process termination
     process.on('SIGINT', async () => {
-        logger.info('Received SIGINT, closing session');
-        await session.close();
-        process.exit(0);
+        logger.info('Received SIGINT');
+        orderlyShutdown(session);
     });
 
-    process.on('SIGTERM', async () => {
-        logger.info('Received SIGTERM, closing session');
-        await session.close();
-        process.exit(0);
+    process.on('SIGTERM', () => {
+        logger.info('Received SIGTERM');
+        orderlyShutdown(session);
     });
 }

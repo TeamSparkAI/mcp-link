@@ -46,7 +46,13 @@ export class ProxiedStdioMcpServer implements ProxiedMcpServer {
    
     async closeSession(): Promise<void> {
         logger.info('Closing proxied stdio endpoint');
-        await this.stdioClient?.close();
+        if (this.stdioClient) {
+            logger.debug('StdioClient exists, calling close()');
+            await this.stdioClient.close();
+            logger.debug('StdioClient close() completed');
+        } else {
+            logger.debug('No StdioClient to close');
+        }
         this.stdioClient = null;
     }
 }
