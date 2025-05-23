@@ -66,6 +66,8 @@ mcplink --serverMode=sse --port=8080 --image=mcp/fetch
 mcplink --serverMode=streamable --clientMode=stdio --command=npx mcp-fetch
 ```
 
+> **Important Note for stdio Server Mode**: You can use the above command lines directly in your MCP using tool (your IDE). When the LLM connects to the `mcp-link` MCP server, it will automatically be bridged to the linked MCP server.
+
 ### Source-Target Permutations
 
 | Verified | Source Mode | Target Mode | Description |
