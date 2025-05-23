@@ -12,12 +12,8 @@ import logger from '../logger.js';
 // https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#streamable-http
 
 export class StreamableSession extends BaseSession<StreamableHTTPServerTransport> {
-    constructor(transport: StreamableHTTPServerTransport, proxiedMcpServer: ProxiedMcpServer) {
-        super(transport.sessionId || '', proxiedMcpServer, transport, 'Streaming');
-    }
-
-    async start() {
-        this.proxiedMcpServer.startSession(this);
+    constructor(transport: StreamableHTTPServerTransport, sessionId: string, proxiedMcpServer: ProxiedMcpServer) {
+        super(sessionId, proxiedMcpServer, transport, 'Streaming');
     }
 }
 
@@ -49,28 +45,21 @@ export async function startStreamableTransport(config: ProxyConfig, proxiedMcpSe
             transport = session.transport;
         } else if (!sessionId && isInitializeRequest(req.body)) {
             // New initialization request
+            const newSessionId = `streaming-${Date.now()}`;
             transport = new StreamableHTTPServerTransport({
-                sessionIdGenerator: () => `streaming-${Date.now()}`,
+                sessionIdGenerator: () => newSessionId,
                 onsessioninitialized: async (sessionId) => {
                     logger.info('Streaming session initialized:', sessionId);
-                    const session = new StreamableSession(transport, proxiedMcpServer);
-                    activeSessions.set(sessionId, session);
-
-                    // !!! The issue we have right now is that this message handler gets called for the init message before the proxied client is ready to receive messages.
-                    //
                     transport.onmessage = async (message) => {
-                        // !!! Wait a bit (this gets the test to pass, just to validate that the timing is the issue)
-                        await new Promise(resolve => setTimeout(resolve, 1000));
                         logger.info('onmessage', message);
                         session.forwardMessage(message);
                     }
-
-                    await session.start();
                 }
             });
     
-            // Clean up transport when closed
+            // Clean up transport when closed (Note: I've never seen this get called, even when client connections are closed)
             transport.onclose = () => {
+                logger.info('transport.onclose', transport.sessionId);
                 if (transport.sessionId) {
                     const session = activeSessions.get(transport.sessionId);
                     if (session) {
@@ -80,7 +69,9 @@ export async function startStreamableTransport(config: ProxyConfig, proxiedMcpSe
                 }
             }
 
-            await transport.start();
+            const session = new StreamableSession(transport, newSessionId, proxiedMcpServer);
+            activeSessions.set(newSessionId, session);
+            await session.start();
         } else {
             // Invalid request
             res.status(400).json(jsonRpcError('Bad Request: No valid session ID provided'));
@@ -118,6 +109,24 @@ export async function startStreamableTransport(config: ProxyConfig, proxiedMcpSe
 
     process.on('uncaughtException', (error) => {
         logger.error('Uncaught Exception:', error);
+    });
+
+    // We sometimes get unceremoniously terminated, and we need to close sessions (so we can terminated child processes or running containers when needed)
+    async function orderlyShutdown() {
+        logger.info('Orderly shutdown');
+        activeSessions.forEach(session => session.close());
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        process.exit(0);
+    }
+
+    process.on('SIGINT', () => {
+        logger.info('SIGINT');
+        orderlyShutdown();
+    });
+
+    process.on('SIGTERM', () => {
+        logger.info('SIGTERM');
+        orderlyShutdown();
     });
 
     server.listen(port, host, () => {

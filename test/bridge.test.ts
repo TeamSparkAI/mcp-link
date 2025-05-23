@@ -53,7 +53,6 @@ async function terminateServer(server: ChildProcess) {
 }
 
 describe('MCP Bridge', () => {
-    /*
     describe('stdio->stdio', () => {
         let transport: Transport;
         const client = getTestClient();
@@ -187,7 +186,7 @@ describe('MCP Bridge', () => {
             console.log('Cleanup complete');
         });
     });
-*/
+
     describe('streamable->stdio', () => {
         let transport: Transport;
         const client = getTestClient();
@@ -195,17 +194,8 @@ describe('MCP Bridge', () => {
         const testPort = 34567;
         
         beforeAll(async () => {
-            /*
             server = await runBridgeServer(['--serverMode=streamable', '--port=' + testPort, '--clientMode=stdio', '--command=node', serverEverythingPath]);
-            server.stdout?.on('data', (data) => {
-                console.log('Server stdout:', data.toString());
-            });
-            server.stderr?.on('data', (data) => {
-                console.log('Server stderr:', data.toString());
-            });
-            */
-            //transport = new StreamableHTTPClientTransport(new URL('http://localhost:' + testPort + '/mcp'));
-            transport = new StreamableHTTPClientTransport(new URL('http://localhost:3000/mcp'));
+            transport = new StreamableHTTPClientTransport(new URL('http://localhost:' + testPort + '/mcp'));
         });
 
         it('should successfully execute echo command', async () => {
@@ -220,7 +210,7 @@ describe('MCP Bridge', () => {
             console.log('Cleaning up...');
             await client.close();
             await sleep(1000);
-            //await terminateServer(server);
+            await terminateServer(server);
             console.log('Cleanup complete');
         });
     });
