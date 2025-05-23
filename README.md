@@ -8,7 +8,7 @@ When the target MCP server is stdio-container, an ephemeral Docker container wil
 
 ## Development
 
-This project uses Node.js and the Commander package for CLI functionality.
+This project uses Node.js and is implement in TypeScript.  It uses the Commander package for CLI functionality and Dockerode for container management.
 
 ### Prerequisites
 
@@ -75,7 +75,7 @@ mcpbridge [options]
 # Run with stdio server and container client
 mcpbridge --serverMode=stdio --clientMode=stdio-container --image=mcp/fetch
 
-# Run with default server mode and container client
+# Run with stdio server and container client (leveraging defaults)
 mcpbridge --image=mcp/fetch
 
 # Run with SSE server on custom port
