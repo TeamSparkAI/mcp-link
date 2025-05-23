@@ -187,6 +187,70 @@ describe('MCP Bridge', () => {
         });
     });
 
+    describe('sse->sse', () => {
+        let transport: Transport;
+        const client = getTestClient();
+        let proxiedServer: ChildProcess;
+        let server: ChildProcess;
+        const proxiedTestPort = 34568;
+        const testPort = 34567;
+        
+        beforeAll(async () => {
+            proxiedServer = await runEverythingServer('sse', proxiedTestPort);
+            server = await runBridgeServer(['--serverMode=sse', '--port=' + testPort, '--clientMode=sse', '--endpoint=http://localhost:' + proxiedTestPort + '/sse']);
+            transport = new SSEClientTransport(new URL('http://localhost:' + testPort + '/sse'));
+        });
+
+        it('should successfully execute echo command', async () => {    
+            await client.connect(transport);
+            const result = await client.callTool({name: 'echo', arguments: { message: 'Hello, World!' }}) as CallToolResult;
+            console.log('Got result:', result.content);
+            expect(result.content).toBeDefined();
+            expect(result.content?.[0]).toEqual({ type: 'text', text: 'Echo: Hello, World!' });
+        });
+        
+        afterAll(async () => {
+            console.log('Cleaning up...');
+            await client.close();
+            await sleep(1000);
+            await terminateServer(proxiedServer);
+            await terminateServer(server);
+            console.log('Cleanup complete');
+        });
+    });
+
+    describe('sse->streamable', () => {
+        let transport: Transport;
+        const client = getTestClient();
+        let proxiedServer: ChildProcess;
+        let server: ChildProcess;
+        const proxiedTestPort = 34568;
+        const testPort = 34567;
+        
+        beforeAll(async () => {
+            proxiedServer = await runEverythingServer('streamableHttp', proxiedTestPort);
+            server = await runBridgeServer(['--serverMode=sse', '--port=' + testPort, '--clientMode=streamable', '--endpoint=http://localhost:' + proxiedTestPort + '/mcp']);
+            transport = new SSEClientTransport(new URL('http://localhost:' + testPort + '/sse'));
+        });
+
+        it('should successfully execute echo command', async () => {    
+            await client.connect(transport);
+            const result = await client.callTool({name: 'echo', arguments: { message: 'Hello, World!' }}) as CallToolResult;
+            console.log('Got result:', result.content);
+            expect(result.content).toBeDefined();
+            expect(result.content?.[0]).toEqual({ type: 'text', text: 'Echo: Hello, World!' });
+        });
+        
+        afterAll(async () => {
+            console.log('Cleaning up...');
+            await client.close();
+            await sleep(1000);
+            await terminateServer(proxiedServer);
+            await terminateServer(server);
+            console.log('Cleanup complete');
+        });
+    });
+
     describe('streamable->stdio', () => {
         let transport: Transport;
         const client = getTestClient();
@@ -215,11 +279,71 @@ describe('MCP Bridge', () => {
         });
     });
 
+    describe('streamable->sse', () => {
+        let transport: Transport;
+        const client = getTestClient();
+        let proxiedServer: ChildProcess;
+        let server: ChildProcess;
+        const proxiedTestPort = 34568;
+        const testPort = 34567;
+        
+        beforeAll(async () => {
+            proxiedServer = await runEverythingServer('sse', proxiedTestPort);
+            server = await runBridgeServer(['--serverMode=streamable', '--port=' + testPort, '--clientMode=sse', '--endpoint=http://localhost:' + proxiedTestPort + '/sse']);
+            transport = new StreamableHTTPClientTransport(new URL('http://localhost:' + testPort + '/mcp'));
+        });
+
+        it('should successfully execute echo command', async () => {    
+            await client.connect(transport);
+            const result = await client.callTool({name: 'echo', arguments: { message: 'Hello, World!' }}) as CallToolResult;
+            console.log('Got result:', result.content);
+            expect(result.content).toBeDefined();
+            expect(result.content?.[0]).toEqual({ type: 'text', text: 'Echo: Hello, World!' });
+        });
+        
+        afterAll(async () => {
+            console.log('Cleaning up...');
+            await client.close();
+            await sleep(1000);
+            await terminateServer(proxiedServer);
+            await terminateServer(server);
+            console.log('Cleanup complete');
+        });
+    });
+
+    describe('streamable->streamable', () => {
+        let transport: Transport;
+        const client = getTestClient();
+        let proxiedServer: ChildProcess;
+        let server: ChildProcess;
+        const proxiedTestPort = 34568;
+        const testPort = 34567;
+        
+        beforeAll(async () => {
+            proxiedServer = await runEverythingServer('streamableHttp', proxiedTestPort);
+            server = await runBridgeServer(['--serverMode=streamable', '--port=' + testPort, '--clientMode=streamable', '--endpoint=http://localhost:' + proxiedTestPort + '/mcp']);
+            transport = new StreamableHTTPClientTransport(new URL('http://localhost:' + testPort + '/mcp'));
+        });
+
+        it('should successfully execute echo command', async () => {    
+            await client.connect(transport);
+            const result = await client.callTool({name: 'echo', arguments: { message: 'Hello, World!' }}) as CallToolResult;
+            console.log('Got result:', result.content);
+            expect(result.content).toBeDefined();
+            expect(result.content?.[0]).toEqual({ type: 'text', text: 'Echo: Hello, World!' });
+        });
+        
+        afterAll(async () => {
+            console.log('Cleaning up...');
+            await client.close();
+            await sleep(1000);
+            await terminateServer(proxiedServer);
+            await terminateServer(server);
+            console.log('Cleanup complete');
+        });
+    });
+
     // Add remaining suites (cover all permutations):
-    // - sse->sse
-    // - sse->streamable
     // - sse->stdio-container
-    // - streamable->sse
-    // - streamable->streamable
     // - streamable->stdio-container
 });
