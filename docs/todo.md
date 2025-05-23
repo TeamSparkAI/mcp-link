@@ -15,18 +15,18 @@ We need to define test cases (maybe or maybe not automated depending on practica
 
 | Verified | Source Mode | Target Mode | Description |
 |----------|-------------|-------------|-------------|
-| ❌ | stdio | stdio | Direct stdio to stdio bridge |
-| ❌ | stdio | sse | Bridge stdio source to SSE endpoint |
-| ❌ | stdio | streamable | Bridge stdio source to streamable endpoint |
+| ✅ | stdio | stdio | Direct stdio to stdio bridge |
+| ✅ | stdio | sse | Bridge stdio source to SSE endpoint |
+| ✅ | stdio | streamable | Bridge stdio source to streamable endpoint |
 | ✅ | stdio | stdio-container | Bridge stdio source to containerized stdio endpoint |
-| ❌ | sse | stdio | Bridge SSE source to stdio endpoint |
-| ❌ | sse | sse | Direct SSE to SSE bridge |
-| ❌ | sse | streamable | Bridge SSE source to streamable endpoint |
+| ✅ | sse | stdio | Bridge SSE source to stdio endpoint |
+| ✅ | sse | sse | Direct SSE to SSE bridge |
+| ✅ | sse | streamable | Bridge SSE source to streamable endpoint |
 | ✅ | sse | stdio-container | Bridge SSE source to containerized stdio endpoint |
-| ❌ | streamable | stdio | Bridge streamable source to stdio endpoint |
-| ❌ | streamable | sse | Bridge streamable source to SSE endpoint |
-| ❌ | streamable | streamable | Direct streamable to streamable bridge |
-| ❌ | streamable | stdio-container | Bridge streamable source to containerized stdio endpoint |
+| ✅ | streamable | stdio | Bridge streamable source to stdio endpoint |
+| ✅ | streamable | sse | Bridge streamable source to SSE endpoint |
+| ✅ | streamable | streamable | Direct streamable to streamable bridge |
+| ✅ | streamable | stdio-container | Bridge streamable source to containerized stdio endpoint |
 
 ## Fixtures
 
