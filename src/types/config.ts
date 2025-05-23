@@ -1,5 +1,7 @@
-export type ProxyServerMode = 'sse' | 'stdio' | 'streamable';
-export type ProxyClientMode = 'stdio' | 'sse' | 'streamable' | 'stdio-container';
+import { MessageProcessor } from "./messageProcessor";
+
+export type BridgeServerMode = 'sse' | 'stdio' | 'streamable';
+export type BridgeClientMode = 'stdio' | 'sse' | 'streamable' | 'stdio-container';
 
 export interface ContainerVolume {
     source: string;
@@ -7,15 +9,16 @@ export interface ContainerVolume {
     options?: string;
 }
 
-export interface ProxyConfig {
-    serverMode: ProxyServerMode;
+export interface BridgeConfig {
+    serverMode: BridgeServerMode;
     serverPort?: number;
     serverHost?: string;
-    clientMode: ProxyClientMode;
+    clientMode: BridgeClientMode;
     clientContainerImage?: string;
     clientEndpoint?: string;
     clientCommand?: string;
     env?: Record<string, string>;
     volumes?: string[];
     args?: string[];
+    messageProcessor?: MessageProcessor;
 }

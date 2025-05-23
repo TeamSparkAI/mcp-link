@@ -1,18 +1,18 @@
 import { StdioClientTransport, StdioServerParameters } from "@modelcontextprotocol/sdk/client/stdio";
-import { ProxiedMcpServer } from "./clientProxy";
-import { jsonRpcError, Session } from "../serverTransports/session";
+import { ClientEndpoint } from "./clientEndpoint";
+import { jsonRpcError, Session } from "../serverEndpoints/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
-import { ProxyConfig } from "../types/config";
-import { SessionManager } from "../serverTransports/sessionManager";
+import { BridgeConfig } from "../types/config";
+import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
-export class ProxiedStdioMcpServer implements ProxiedMcpServer {
+export class ClientEndpointStdio implements ClientEndpoint {
     private command: string;
     private args: string[];
     private stdioClient: StdioClientTransport | null = null;
     private sessionManager: SessionManager;
   
-    constructor(config: ProxyConfig, sessionManager: SessionManager) {
+    constructor(config: BridgeConfig, sessionManager: SessionManager) {
         if (!config.clientCommand) {
             throw new Error('Client command is required');
         }
@@ -23,37 +23,37 @@ export class ProxiedStdioMcpServer implements ProxiedMcpServer {
   
     async startSession(session: Session): Promise<void> {  
         // Connect to the SSE endpoint
-        logger.info('Connecting to proxied stdio endpoint:', this.command);
+        logger.info('Connecting to stdio client endpoint:', this.command);
         const params: StdioServerParameters = { command: this.command, args: this.args };
         this.stdioClient = new StdioClientTransport(params);
         await this.stdioClient.start();
 
         this.stdioClient.onmessage = async (message: JSONRPCMessage) => {
-            logger.debug('Received message from proxied stdio endpoint:', message);
-            await session.returnMessage(message);
+            logger.debug('Received message from stdio client endpoint:', message);
+            await session.returnMessageToClient(message);
         };
   
         this.stdioClient.onerror = async (error: Error) => {
-            logger.error('Stdio Proxied Server Error:', error);
+            logger.error('Stdio client - Server Error:', error);
             const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
-            await session.returnMessage(errorMessage);
+            await session.returnMessageToClient(errorMessage);
         };
 
         this.stdioClient.onclose = async () => {
-            logger.info('Stdio session closed');
-            await session.onProxiedClientClose();
+            logger.info('Stdio client session closed');
+            await session.onClientEndpointClose();
         };
     }
   
     async sendMessage(message: JSONRPCMessage): Promise<void> {
         if (this.stdioClient) {
-            logger.debug('Forwarding message to proxied stdio endpoint:', message);
+            logger.debug('Forwarding message to stdio client endpoint:', message);
             this.stdioClient.send(message);
         }
     }
    
     async closeSession(): Promise<void> {
-        logger.info('Closing proxied stdio endpoint');
+        logger.info('Closing stdio client endpoint');
         if (this.stdioClient) {
             logger.debug('StdioClient exists, calling close()');
             await this.stdioClient.close();

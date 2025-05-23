@@ -1,17 +1,17 @@
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse";
-import { ProxiedMcpServer } from "./clientProxy";
-import { jsonRpcError, Session } from "../serverTransports/session";
+import { ClientEndpoint } from "./clientEndpoint";
+import { jsonRpcError, Session } from "../serverEndpoints/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
-import { ProxyConfig } from "../types/config";
-import { SessionManager } from "../serverTransports/sessionManager";
+import { BridgeConfig } from "../types/config";
+import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
-export class ProxiedSseMcpServer implements ProxiedMcpServer {
+export class ClientEndpointSse implements ClientEndpoint {
     private endpoint: URL;
     private sseClient: SSEClientTransport | null = null;
     private sessionManager: SessionManager;
   
-    constructor(config: ProxyConfig, sessionManager: SessionManager) {
+    constructor(config: BridgeConfig, sessionManager: SessionManager) {
         this.sessionManager = sessionManager;
       if (!config.clientEndpoint) {
         throw new Error('Client endpoint is required');
@@ -21,30 +21,30 @@ export class ProxiedSseMcpServer implements ProxiedMcpServer {
   
     async startSession(session: Session): Promise<void> {  
         // Connect to the SSE endpoint
-        logger.info(`Connecting to proxied SSE endpoint: ${this.endpoint}`);
+        logger.info(`Connecting to SSE client endpoint: ${this.endpoint}`);
         this.sseClient = new SSEClientTransport(this.endpoint);
         await this.sseClient.start();
 
         this.sseClient.onmessage = async (message: JSONRPCMessage) => {
-            logger.debug(`Received message from proxied SSE endpoint: ${message}`);
-            await session.returnMessage(message);
+            logger.debug(`Received message from SSE client endpoint: ${message}`);
+            await session.returnMessageToClient(message);
         };
   
         this.sseClient.onerror = async (error: Error) => {
-            logger.error(`SSE Proxied Server Error: ${error}`);
+            logger.error(`SSE client - Server Error: ${error}`);
             const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
-            await session.returnMessage(errorMessage);
+            await session.returnMessageToClient(errorMessage);
         };
 
         this.sseClient.onclose = async () => {
-            logger.info('SSE session closed');
-            await session.onProxiedClientClose();
+            logger.info('SSE client session closed');
+            await session.onClientEndpointClose();
         };
     }
   
     async sendMessage(message: JSONRPCMessage): Promise<void> {
         if (this.sseClient) {
-            logger.debug(`Forwarding message to proxied SSE endpoint: ${message}`);
+            logger.debug(`Forwarding message to SSE client endpoint: ${message}`);
             this.sseClient.send(message);
         }
     }

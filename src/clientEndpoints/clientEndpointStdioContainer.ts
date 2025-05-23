@@ -1,16 +1,16 @@
 import Docker, { Container, ContainerCreateOptions } from 'dockerode';
-import { ProxiedMcpServer } from "./clientProxy";
-import { jsonRpcError, Session } from "../serverTransports/session";
+import { ClientEndpoint } from "./clientEndpoint";
+import { jsonRpcError, Session } from "../serverEndpoints/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ReadBuffer, serializeMessage } from "@modelcontextprotocol/sdk/shared/stdio";
 import { PassThrough } from 'stream';
-import { ProxyConfig } from "../types/config";
-import { SessionManager } from '../serverTransports/sessionManager';
+import { BridgeConfig } from "../types/config";
+import { SessionManager } from '../serverEndpoints/sessionManager';
 import logger from "../logger";
 
 const docker = new Docker();
 
-export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
+export class ClientEndpointStdioContainer implements ClientEndpoint {
     private image: string;
     private volumes: string[];
     private env: Record<string, string>;
@@ -19,7 +19,7 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
     private stdinStream: NodeJS.ReadWriteStream | null = null;
     private sessionManager: SessionManager;
   
-    constructor(config: ProxyConfig, sessionManager: SessionManager) {
+    constructor(config: BridgeConfig, sessionManager: SessionManager) {
         if (!config.clientContainerImage) {
             throw new Error('Client container image is required');
         }
@@ -48,7 +48,7 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
                     logger.info('Container stopped for sessionId:', containerSessionId);
                     const session = this.sessionManager.getSession(containerSessionId);
                     if (session) {
-                        session.onProxiedClientClose();
+                        session.onClientEndpointClose();
                     }
                 }
             });
@@ -80,7 +80,7 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
                     }
                     
                     logger.debug('Sending message to session:', session.id);
-                    await session.returnMessage(message);
+                    await session.returnMessageToClient(message);
                 } catch (error) {
                     logger.error('Error parsing message:', error);
                 }
@@ -90,7 +90,7 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
         stdout.on('error', async (error: Error) => {
             logger.error('Container Error:', error);
             const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
-            await session.returnMessage(errorMessage);
+            await session.returnMessageToClient(errorMessage);
             stdout.removeAllListeners();
             stdout.end();
             readBuffer.clear();

@@ -1,12 +1,12 @@
-import { ProxiedMcpServer } from "../clientProxies/clientProxy";
-import { ProxyConfig } from "../types/config";
+import { ClientEndpoint } from "../clientEndpoints/clientEndpoint";
+import { BridgeConfig } from "../types/config";
 import { SessionManagerImpl } from "./sessionManager";
 import logger from "../logger";
 
-export abstract class ServerTransport {
+export abstract class ServerEndpoint {
     constructor(
-        protected config: ProxyConfig, 
-        protected proxiedMcpServer: ProxiedMcpServer,
+        protected config: BridgeConfig, 
+        protected clientEndpoint: ClientEndpoint,
         protected sessionManager: SessionManagerImpl) {
     }
 
@@ -15,9 +15,9 @@ export abstract class ServerTransport {
     async stop(): Promise<void> {
         logger.info(`Stopping ${this.constructor.name} transport`);
         try {
-            // Close all sessions (which will close their proxied MCP servers)
+            // Close all sessions (which will close their client endpoints)
             this.sessionManager.getSessions().forEach(session => session.close());
-            // We wait for async shutdown of the proxied MCP servers
+            // We wait for async shutdown of the client endpoints
             await new Promise(resolve => setTimeout(resolve, 1000));
             process.exit(0);
         } catch (error) {

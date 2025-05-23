@@ -3,23 +3,24 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
-import { ProxiedMcpServer } from '../clientProxies/clientProxy';
+import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { BaseSession } from './session';
-import { ProxyConfig } from '../types/config';
+import { BridgeConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
-import { ServerTransport } from './serverTransport';
+import { ServerEndpoint } from './serverEndpoint';
+import { MessageProcessor } from '../types/messageProcessor';
 import logger from '../logger';
 
 // Session class to manage SSE transport and message handling
 export class SseSession extends BaseSession<SSEServerTransport> {
-    constructor(transport: SSEServerTransport, proxiedMcpServer: ProxiedMcpServer) {
-        super(transport.sessionId || '', proxiedMcpServer, transport, 'SSE');
+    constructor(transport: SSEServerTransport, clientEndpoint: ClientEndpoint, messageProcessor?: MessageProcessor) {
+        super(transport.sessionId || '', clientEndpoint, transport, 'SSE', messageProcessor);
     }
 }
 
-export class ServerTransportSse extends ServerTransport {
-    constructor(config: ProxyConfig, proxiedMcpServer: ProxiedMcpServer, sessionManager: SessionManagerImpl) {
-        super(config, proxiedMcpServer, sessionManager);
+export class ServerEndpointSse extends ServerEndpoint {
+    constructor(config: BridgeConfig, clientEndpoint: ClientEndpoint, sessionManager: SessionManagerImpl) {
+        super(config, clientEndpoint, sessionManager);
     }
 
     async start(): Promise<void> {
@@ -33,17 +34,17 @@ export class ServerTransportSse extends ServerTransport {
         app.use(cors());
         app.use(express.json());
 
-        // Create SSE endpoint handler with access to proxiedMcpServer
+        // Create SSE endpoint handler
         app.get('/sse', async (req: Request, res: Response) => {
             const transport = new SSEServerTransport('/messages', res);
             logger.info('Received SSE request, created new session:', transport.sessionId);
             
-            const session = new SseSession(transport, this.proxiedMcpServer);
-            session.on('proxiedClientClose', () => {
-                logger.info('Proxied client closed for SSE session:', session.id);
+            const session = new SseSession(transport, this.clientEndpoint, this.config.messageProcessor);
+            session.on('clientEndpointClose', () => {
+                logger.info('Client endpoint closed for SSE session:', session.id);
                 this.sessionManager.removeSession(session.id);
             });
-            
+
             this.sessionManager.addSession(session);
             await session.start();
 
@@ -87,7 +88,7 @@ export class ServerTransportSse extends ServerTransport {
                     params: req.body.params
                 };
 
-                await session.forwardMessage(message);
+                await session.forwardMessageToServer(message);
                 res.status(202).send('Accepted').end();
             } catch (error) {
                 logger.error('Error handling message:', error);
@@ -96,7 +97,7 @@ export class ServerTransportSse extends ServerTransport {
         });
 
         server.listen(port, host, () => {
-            logger.info(`SSE proxy server listening on http://${host}:${port}`);
+            logger.info(`SSE server endpoint listening on http://${host}:${port}`);
         });
     }
 }

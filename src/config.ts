@@ -1,11 +1,11 @@
 import { Command } from 'commander';
-import { ProxyConfig, ProxyServerMode, ProxyClientMode } from './types/config';
+import { BridgeConfig, BridgeServerMode, BridgeClientMode } from './types/config';
 import logger from './logger';
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-function parseServerMode(envVar: string | undefined): ProxyServerMode {
+function parseServerMode(envVar: string | undefined): BridgeServerMode {
     if (!envVar) {
         return 'stdio'; // Default mode
     }
@@ -19,7 +19,7 @@ function parseServerMode(envVar: string | undefined): ProxyServerMode {
     throw new Error(`Invalid server mode "${envVar}"`);
 }
 
-function parseClientMode(envVar: string | undefined): ProxyClientMode {
+function parseClientMode(envVar: string | undefined): BridgeClientMode {
     if (!envVar) {
         return 'stdio-container'; // Default mode
     }
@@ -50,7 +50,7 @@ function collect(value: string, previous: string[]) {
     return previous.concat([value]);
 }
 
-export function createConfig(): ProxyConfig {
+export function createConfig(): BridgeConfig {
     // Create a new Command instance
     const program = new Command();
 

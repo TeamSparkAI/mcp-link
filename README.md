@@ -104,4 +104,4 @@ mcpbridge --serverMode=streamable --clientMode=stdio --command=npx mcp-fetch
 
 ## License
 
-MIT
+Apache-2.0

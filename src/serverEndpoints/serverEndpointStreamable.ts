@@ -2,26 +2,27 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp';
-import { ProxiedMcpServer } from '../clientProxies/clientProxy';
+import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { BaseSession, jsonRpcError } from './session.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types';
-import { ProxyConfig } from '../types/config';
+import { BridgeConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
-import { ServerTransport } from './serverTransport';
+import { ServerEndpoint } from './serverEndpoint';
+import { MessageProcessor } from '../types/messageProcessor';
 import logger from '../logger.js';
 
 // See: Sample StreamableHTTP server
 // https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#streamable-http
 
 export class StreamableSession extends BaseSession<StreamableHTTPServerTransport> {
-    constructor(transport: StreamableHTTPServerTransport, sessionId: string, proxiedMcpServer: ProxiedMcpServer) {
-        super(sessionId, proxiedMcpServer, transport, 'Streaming');
+    constructor(transport: StreamableHTTPServerTransport, sessionId: string, clientEndpoint: ClientEndpoint, messageProcessor?: MessageProcessor) {
+        super(sessionId, clientEndpoint, transport, 'Streaming', messageProcessor);
     }
 }
 
-export class ServerTransportStreamable extends ServerTransport {
-    constructor(config: ProxyConfig, proxiedMcpServer: ProxiedMcpServer, sessionManager: SessionManagerImpl) {
-        super(config, proxiedMcpServer, sessionManager);
+export class ServerEndpointStreamable extends ServerEndpoint {
+    constructor(config: BridgeConfig, clientEndpoint: ClientEndpoint, sessionManager: SessionManagerImpl) {
+        super(config, clientEndpoint, sessionManager);
     }
 
     async start(): Promise<void> {
@@ -58,7 +59,7 @@ export class ServerTransportStreamable extends ServerTransport {
                         logger.info('Streaming session initialized:', sessionId);
                         transport.onmessage = async (message) => {
                             logger.debug('Streamable server transport - received message', message);
-                            session.forwardMessage(message);
+                            session.forwardMessageToServer(message);
                         }
                     }
                 });
@@ -75,12 +76,12 @@ export class ServerTransportStreamable extends ServerTransport {
                     }
                 }
 
-                const session = new StreamableSession(transport, newSessionId, this.proxiedMcpServer);
-                session.on('proxiedClientClose', () => {
-                    logger.info('Proxied client closed for streamable session:', session.id);
+                const session = new StreamableSession(transport, newSessionId, this.clientEndpoint, this.config.messageProcessor);
+                session.on('clientEndpointClose', () => {
+                    logger.info('Client endpoint closed for streamable session:', session.id);
                     this.sessionManager.removeSession(session.id);
                 });
-                
+
                 this.sessionManager.addSession(session);
                 await session.start();
             } else {
@@ -114,7 +115,7 @@ export class ServerTransportStreamable extends ServerTransport {
         app.delete('/mcp', handleSessionRequest);
 
         server.listen(port, host, () => {
-            logger.info(`Streaming proxy server listening on http://${host}:${port}`);
+            logger.info(`Streamable server endpoint listening on http://${host}:${port}`);
         });
     }
 }

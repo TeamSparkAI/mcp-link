@@ -1,17 +1,17 @@
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
-import { ProxiedMcpServer } from "./clientProxy";
-import { jsonRpcError, Session } from "../serverTransports/session";
-import { ProxyConfig } from "../types/config";
-import { SessionManager } from "../serverTransports/sessionManager";
+import { ClientEndpoint } from "./clientEndpoint";
+import { jsonRpcError, Session } from "../serverEndpoints/session";
+import { BridgeConfig } from "../types/config";
+import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
-export class ProxiedStreamableMcpServer implements ProxiedMcpServer {
+export class ClientEndpoiontStreamable implements ClientEndpoint {
     private endpoint: URL;
     private streamableClient: StreamableHTTPClientTransport | null = null;
     private sessionManager: SessionManager;
 
-    constructor(config: ProxyConfig, sessionManager: SessionManager) {
+    constructor(config: BridgeConfig, sessionManager: SessionManager) {
         if (!config.clientEndpoint) {
             throw new Error('Client endpoint is required');
         }
@@ -22,28 +22,28 @@ export class ProxiedStreamableMcpServer implements ProxiedMcpServer {
     async startSession(session: Session): Promise<void> {
         try {
             // Create a new transport for this session
-            logger.info(`Connecting to proxied Streamable endpoint: ${this.endpoint}`);
+            logger.info(`Connecting to Streamable client endpoint: ${this.endpoint}`);
             this.streamableClient = new StreamableHTTPClientTransport(this.endpoint);
 
             this.streamableClient.onmessage = async (message: JSONRPCMessage) => {
-                logger.debug(`Received message from proxied Streamable endpoint: ${message}`);
-                await session.returnMessage(message);
+                logger.debug(`Received message from Streamable client endpoint: ${message}`);
+                await session.returnMessageToClient(message);
             };
         
             this.streamableClient.onerror = async (error: Error) => {
-                logger.error(`Streamable Proxied Server Error: ${error}`);
+                logger.error(`Streamable client - Server Error: ${error}`);
                 const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
-                await session.returnMessage(errorMessage);
+                await session.returnMessageToClient(errorMessage);
             };
 
             this.streamableClient.onclose = async () => {
-                logger.info('Streamable session closed');
-                await session.onProxiedClientClose();
+                logger.info('Streamable client session closed');
+                await session.onClientEndpointClose();
             };
 
             // Start the transport
             await this.streamableClient.start();
-            logger.info('Connected to streaming endpoint for session:', session.id);
+            logger.info('Connected to streamable client endpoint for session:', session.id);
         } catch (error) {
             logger.error('Error starting streaming session:', error);
             throw error;
@@ -52,7 +52,7 @@ export class ProxiedStreamableMcpServer implements ProxiedMcpServer {
 
     async sendMessage(message: JSONRPCMessage): Promise<void> {
         if (this.streamableClient) {
-            logger.debug(`Forwarding message to proxied Streamable endpoint: ${message}`);
+            logger.debug(`Forwarding message to Streamable client endpoint: ${message}`);
             this.streamableClient.send(message);
         }
     }
