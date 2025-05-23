@@ -1,4 +1,4 @@
-# MCP Bridge Testing
+# MCP Link Testing
 
 ## Fixtures
 

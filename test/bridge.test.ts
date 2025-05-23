@@ -52,7 +52,7 @@ async function terminateServer(server: ChildProcess) {
     await sleep(1000);
 }
 
-describe('MCP Bridge', () => {
+describe('MCP Link', () => {
     describe('stdio->stdio', () => {
         let transport: Transport;
         const client = getTestClient();

@@ -56,8 +56,8 @@ export function createConfig(): BridgeConfig {
 
     // Configure the command line interface
     program
-        .name('mcpbridge')
-        .description('TeamSpark AI MCP Bridge')
+        .name('mcplink')
+        .description('TeamSpark AI MCP Link')
         .option('--serverMode <mode>', 'Server mode (sse, stdio, streamable)', 'stdio')
         .option('--clientMode <mode>', 'Client mode (stdio, sse, streamable, stdio-container)', 'stdio-container')
         .option('--port <number>', 'Server port', '3000')
@@ -71,10 +71,10 @@ export function createConfig(): BridgeConfig {
         .allowExcessArguments()
         .addHelpText('after', `
 Examples:
-  $ mcpbridge --serverMode=stdio --clientMode=stdio-container --image=mcp/fetch
-  $ mcpbridge --image=mcp/fetch
-  $ mcpbridge --serverMode=sse --port=8080 --image=mcp/fetch
-  $ mcpbridge --serverMode=streamable --clientMode=stdio --command=npx mcp-fetch
+  $ mcplink --serverMode=stdio --clientMode=stdio-container --image=mcp/fetch
+  $ mcplink --image=mcp/fetch
+  $ mcplink --serverMode=sse --port=8080 --image=mcp/fetch
+  $ mcplink --serverMode=streamable --clientMode=stdio --command=npx mcp-fetch
         `);
 
     // Parse command line arguments

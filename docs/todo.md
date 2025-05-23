@@ -1,4 +1,4 @@
-# TeamSpark MCP Bridge TODO
+# TeamSpark MCP Link TODO
 
 ## SDK
 
