@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bob/mcp-link.git"
+    "url": "git+https://github.com/TeamSparkAI/mcp-link.git"
   },
   "keywords": [
     "mcp",
@@ -20,9 +20,9 @@
   "author": "Bob",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/bob/mcp-link/issues"
+    "url": "https://github.com/TeamSparkAI/mcp-link/issues"
   },
-  "homepage": "https://github.com/bob/mcp-link#readme",
+  "homepage": "https://github.com/TeamSparkAI/mcp-link#readme",
   "scripts": {
     "build:cli": "ncc build src/index.ts -o dist/cli && echo '#!/usr/bin/env node' | cat - dist/cli/index.js > dist/cli/index.tmp && mv dist/cli/index.tmp dist/cli/index.js && chmod +x dist/cli/index.js",
     "build:sdk": "tsc -p tsconfig.sdk.json",

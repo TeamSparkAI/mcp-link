@@ -4,7 +4,7 @@ MCP Link is a bridge that allows you to present any MCP server endpoint (stdio, 
 
 When the target MCP server is stdio-container, an ephemeral Docker container will be spun up per MCP session and removed at the end of the session.
 
-![MCP Link](./assets/mcplink.png)
+![MCP Link](https://github.com/TeamSparkAI/mcp-link/raw/main/assets/mcplink.png)
 
 ## Development
 
