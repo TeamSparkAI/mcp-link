@@ -7,6 +7,8 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { ChildProcess, spawn } from 'child_process';
 import { join } from 'path';
 
+// Note: All server/client mode permutations are tested in this file.
+
 // Get the full path to server-everything (installed as a dev dependency which we run from the local code)
 const serverEverythingPath = require.resolve('@modelcontextprotocol/server-everything/dist/index.js');
 
@@ -398,8 +400,4 @@ describe('MCP Link', () => {
             console.log('Cleanup complete');
         });
     });
-
-    // Add remaining suites (cover all permutations):
-    // - sse->stdio-container
-    // - streamable->stdio-container
 });
