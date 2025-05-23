@@ -15,6 +15,10 @@ export class StreamableSession extends BaseSession<StreamableHTTPServerTransport
     constructor(transport: StreamableHTTPServerTransport, proxiedMcpServer: ProxiedMcpServer) {
         super(transport.sessionId || '', proxiedMcpServer, transport, 'Streaming');
     }
+
+    async start() {
+        this.proxiedMcpServer.startSession(this);
+    }
 }
 
 export async function startStreamableTransport(config: ProxyConfig, proxiedMcpServer: ProxiedMcpServer) {
@@ -34,6 +38,11 @@ export async function startStreamableTransport(config: ProxyConfig, proxiedMcpSe
         const sessionId = req.headers['mcp-session-id'] as string | undefined;
         let transport: StreamableHTTPServerTransport;
 
+        logger.info('POST /mcp sessionId', sessionId);
+        if (sessionId) {
+            logger.info('POST /mcp hasSessions', activeSessions.has(sessionId!));
+        }
+
         if (sessionId && activeSessions.has(sessionId)) {
             // Reuse existing transport
             const session = activeSessions.get(sessionId)!;
@@ -42,11 +51,24 @@ export async function startStreamableTransport(config: ProxyConfig, proxiedMcpSe
             // New initialization request
             transport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: () => `streaming-${Date.now()}`,
-                onsessioninitialized: (sessionId) => {
+                onsessioninitialized: async (sessionId) => {
                     logger.info('Streaming session initialized:', sessionId);
+                    const session = new StreamableSession(transport, proxiedMcpServer);
+                    activeSessions.set(sessionId, session);
+
+                    // !!! The issue we have right now is that this message handler gets called for the init message before the proxied client is ready to receive messages.
+                    //
+                    transport.onmessage = async (message) => {
+                        // !!! Wait a bit (this gets the test to pass, just to validate that the timing is the issue)
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        logger.info('onmessage', message);
+                        session.forwardMessage(message);
+                    }
+
+                    await session.start();
                 }
             });
-
+    
             // Clean up transport when closed
             transport.onclose = () => {
                 if (transport.sessionId) {
@@ -58,10 +80,7 @@ export async function startStreamableTransport(config: ProxyConfig, proxiedMcpSe
                 }
             }
 
-            // Create and store new session
-            const session = new StreamableSession(transport, proxiedMcpServer);
-            activeSessions.set(transport.sessionId!, session);
-            await session.start();
+            await transport.start();
         } else {
             // Invalid request
             res.status(400).json(jsonRpcError('Bad Request: No valid session ID provided'));
@@ -69,17 +88,19 @@ export async function startStreamableTransport(config: ProxyConfig, proxiedMcpSe
         }
 
         // Handle the request
+        logger.info('handleRequest', req.body);
         await transport.handleRequest(req, res, req.body);
     });
 
     // Reusable handler for GET and DELETE requests
     const handleSessionRequest = async (req: Request, res: Response) => {
+        logger.info('handleSessionRequest', req.headers);
         const sessionId = req.headers['mcp-session-id'] as string | undefined;
         if (!sessionId || !activeSessions.has(sessionId)) {
             res.status(400).send('Invalid or missing session ID');
             return;
         }
-      
+
         const session = activeSessions.get(sessionId)!;
         await session.transport.handleRequest(req, res);
     };

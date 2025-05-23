@@ -68,23 +68,23 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
         const readBuffer = new ReadBuffer();
         
         stdout.on('data', async (chunk: Buffer) => {
-        logger.debug('Received chunk:', chunk.toString());
-        readBuffer.append(chunk);
-        
-        // Process any complete messages in the buffer
-        while (true) {
-            try {
-                const message = readBuffer.readMessage();
-                if (message === null) {
-                    break;
+            logger.debug('Received chunk:', chunk.toString());
+            readBuffer.append(chunk);
+            
+            // Process any complete messages in the buffer
+            while (true) {
+                try {
+                    const message = readBuffer.readMessage();
+                    if (message === null) {
+                        break;
+                    }
+                    
+                    logger.debug('Sending message to session:', session.id);
+                    await session.returnMessage(message);
+                } catch (error) {
+                    logger.error('Error parsing message:', error);
                 }
-                
-                logger.debug('Sending message to session:', session.id);
-                await session.returnMessage(message);
-            } catch (error) {
-                logger.error('Error parsing message:', error);
             }
-        }
         });
     
         stdout.on('error', async (error: Error) => {
@@ -148,6 +148,7 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
             const stderr = new PassThrough();
             docker.modem.demuxStream(stream, stdout, stderr);
         
+            logger.info('[initializeContainer] Setting up message handling');
             this.setupMessageHandling(stdout, session);
             logger.info('Container initialized and ready');
             return { container, stdin: stream };
@@ -158,10 +159,13 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
     }
     
     async startSession(session: Session): Promise<void> {
+        logger.info('[startSession] Starting session');
         const { container, stdin } = await this.initializeContainer(this.image, session);
+        logger.info('[startSession] Container initialized, setting up session');
         this.container = container;
         this.stdinStream = stdin;
         this.activeSessions.set(session.id, session);
+        logger.info('[startSession] Session setup complete');
     }
   
     async sendMessage(message: JSONRPCMessage): Promise<void> {
