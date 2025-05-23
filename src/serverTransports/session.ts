@@ -1,6 +1,7 @@
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ProxiedMcpServer } from '../clientProxies/clientProxy';
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport";
+import { EventEmitter } from 'events';
 import logger from '../logger';
 
 export function jsonRpcError(message: string, code: number = -32000): JSONRPCMessage {
@@ -23,9 +24,17 @@ export interface Session {
     returnMessage(message: JSONRPCMessage): Promise<void>;  
 
     close(): Promise<void>;
+
+    // Called by proxied clients when they detect they have ended
+    onProxiedClientClose(): Promise<void>;
+
+    // Event emitter methods
+    on(event: 'proxiedClientClose', listener: () => void): this;
+    once(event: 'proxiedClientClose', listener: () => void): this;
+    off(event: 'proxiedClientClose', listener: () => void): this;
 }
 
-export abstract class BaseSession<T extends Transport = Transport> {
+export abstract class BaseSession<T extends Transport = Transport> extends EventEmitter {
     protected sessionId: string;
     protected isActive: boolean = true;
     protected proxiedMcpServer: ProxiedMcpServer;
@@ -33,6 +42,7 @@ export abstract class BaseSession<T extends Transport = Transport> {
     private transportType: string;
 
     constructor(sessionId: string, proxiedMcpServer: ProxiedMcpServer, transport: T, transportType: string) {
+        super();
         this.sessionId = sessionId;
         this.proxiedMcpServer = proxiedMcpServer;
         this._transport = transport;
@@ -80,5 +90,12 @@ export abstract class BaseSession<T extends Transport = Transport> {
         await this.transport.close();
         // Then close the proxied server
         await this.proxiedMcpServer.closeSession();
+    }
+
+    async onProxiedClientClose(): Promise<void> {
+        logger.info(`Proxied client closed for ${this.transportType} session ${this.sessionId}`);
+        this.close();
+        // Server transports will be listening - they will remove the session from the session manager and do any other protocol-specific cleanup
+        this.emit('proxiedClientClose');
     }
 }

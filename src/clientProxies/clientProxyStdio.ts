@@ -3,19 +3,22 @@ import { ProxiedMcpServer } from "./clientProxy";
 import { jsonRpcError, Session } from "../serverTransports/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ProxyConfig } from "../types/config";
+import { SessionManager } from "../serverTransports/sessionManager";
 import logger from "../logger";
 
 export class ProxiedStdioMcpServer implements ProxiedMcpServer {
     private command: string;
     private args: string[];
     private stdioClient: StdioClientTransport | null = null;
+    private sessionManager: SessionManager;
   
-    constructor(config: ProxyConfig) {
+    constructor(config: ProxyConfig, sessionManager: SessionManager) {
         if (!config.clientCommand) {
             throw new Error('Client command is required');
         }
         this.command = config.clientCommand;
         this.args = config.args || [];
+        this.sessionManager = sessionManager;
     }
   
     async startSession(session: Session): Promise<void> {  
@@ -34,6 +37,11 @@ export class ProxiedStdioMcpServer implements ProxiedMcpServer {
             logger.error('Stdio Proxied Server Error:', error);
             const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
             await session.returnMessage(errorMessage);
+        };
+
+        this.stdioClient.onclose = async () => {
+            logger.info('Stdio session closed');
+            await session.onProxiedClientClose();
         };
     }
   

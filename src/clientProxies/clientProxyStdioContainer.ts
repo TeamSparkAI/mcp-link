@@ -5,6 +5,7 @@ import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ReadBuffer, serializeMessage } from "@modelcontextprotocol/sdk/shared/stdio";
 import { PassThrough } from 'stream';
 import { ProxyConfig } from "../types/config";
+import { SessionManager } from '../serverTransports/sessionManager';
 import logger from "../logger";
 
 const docker = new Docker();
@@ -16,9 +17,9 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
     private args: string[];
     private container: Container | null = null;
     private stdinStream: NodeJS.ReadWriteStream | null = null;
-    private activeSessions: Map<string, Session>;
+    private sessionManager: SessionManager;
   
-    constructor(config: ProxyConfig) {
+    constructor(config: ProxyConfig, sessionManager: SessionManager) {
         if (!config.clientContainerImage) {
             throw new Error('Client container image is required');
         }
@@ -26,7 +27,7 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
         this.volumes = config.volumes || [];
         this.env = config.env || {};
         this.args = config.args || [];
-        this.activeSessions = new Map<string, Session>();
+        this.sessionManager = sessionManager;
         this.monitorContainerStop();
     }
 
@@ -45,10 +46,9 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
                 if (event.Type === 'container' && event.Action === 'die') {
                     const containerSessionId = event.Actor.Attributes['mcp.sessionId'];
                     logger.info('Container stopped for sessionId:', containerSessionId);
-                    const session = this.activeSessions.get(containerSessionId);
+                    const session = this.sessionManager.getSession(containerSessionId);
                     if (session) {
-                        session.close();
-                        this.activeSessions.delete(session.id);
+                        session.onProxiedClientClose();
                     }
                 }
             });
@@ -164,7 +164,6 @@ export class ProxiedStdioContainerMcpServer implements ProxiedMcpServer {
         logger.info('[startSession] Container initialized, setting up session');
         this.container = container;
         this.stdinStream = stdin;
-        this.activeSessions.set(session.id, session);
         logger.info('[startSession] Session setup complete');
     }
   

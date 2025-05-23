@@ -1,34 +1,43 @@
 import { createClientProxy } from './clientProxies/clientProxyFactory';
-import { startSSETransport } from './serverTransports/sse';
-import { startStdioTransport } from './serverTransports/stdio';
-import { startStreamableTransport } from './serverTransports/streamable';
 import { createConfig } from './config';
+import { SessionManagerImpl } from './serverTransports/sessionManager';
+import { createServerTransport } from './serverTransports/serverTransportFactory';
 import logger from './logger';
 
-async function startProxy() {
+async function startBridge() {
     try {
         const config = createConfig();
-        logger.info('Starting proxy in mode:', config.serverMode);
+        logger.info('Starting bridge in mode:', config.serverMode);
 
-        const clientProxy = createClientProxy(config);
+        const sessionManager = new SessionManagerImpl();
 
-        switch (config.serverMode) {
-            case 'sse':
-                await startSSETransport(config, clientProxy);
-                break;
-            case 'stdio':
-                await startStdioTransport(config, clientProxy);
-                break;
-            case 'streamable':
-                await startStreamableTransport(config, clientProxy);
-                break;
-            default:
-                throw new Error(`Unsupported transport server mode: ${config.serverMode}`);
-        }
+        const clientProxy = createClientProxy(config, sessionManager);
+
+        const serverTransport = createServerTransport(config, clientProxy, sessionManager);
+        await serverTransport.start();
+
+        process.on('unhandledRejection', (reason, promise) => {
+            logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+        });
+
+        process.on('uncaughtException', (error) => {
+            logger.error('Uncaught Exception:', error);
+        });
+
+        process.on('SIGINT', () => {
+            logger.info('SIGINT');
+            serverTransport.stop();
+        });
+
+        process.on('SIGTERM', () => {
+            logger.info('SIGTERM');
+            serverTransport.stop();
+        });
+
     } catch (error) {
-        logger.error('Failed to start proxy:', error);
+        logger.error('Failed to start bridge:', error);
         process.exit(1);
     }
 }
 
-startProxy();
+startBridge();

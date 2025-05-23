@@ -3,13 +3,16 @@ import { ProxiedMcpServer } from "./clientProxy";
 import { jsonRpcError, Session } from "../serverTransports/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ProxyConfig } from "../types/config";
+import { SessionManager } from "../serverTransports/sessionManager";
 import logger from "../logger";
 
 export class ProxiedSseMcpServer implements ProxiedMcpServer {
     private endpoint: URL;
     private sseClient: SSEClientTransport | null = null;
+    private sessionManager: SessionManager;
   
-    constructor(config: ProxyConfig) {
+    constructor(config: ProxyConfig, sessionManager: SessionManager) {
+        this.sessionManager = sessionManager;
       if (!config.clientEndpoint) {
         throw new Error('Client endpoint is required');
       }
@@ -31,6 +34,11 @@ export class ProxiedSseMcpServer implements ProxiedMcpServer {
             logger.error(`SSE Proxied Server Error: ${error}`);
             const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
             await session.returnMessage(errorMessage);
+        };
+
+        this.sseClient.onclose = async () => {
+            logger.info('SSE session closed');
+            await session.onProxiedClientClose();
         };
     }
   

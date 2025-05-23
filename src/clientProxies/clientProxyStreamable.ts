@@ -3,21 +3,20 @@ import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ProxiedMcpServer } from "./clientProxy";
 import { jsonRpcError, Session } from "../serverTransports/session";
 import { ProxyConfig } from "../types/config";
+import { SessionManager } from "../serverTransports/sessionManager";
 import logger from "../logger";
 
-// !!! This is a copypaste of the SSE proxied server, but for the Streamable transport - I have no idea if this works.
-//
-// One difference is that the Streamable transport has an explicit start() method.
-//
 export class ProxiedStreamableMcpServer implements ProxiedMcpServer {
     private endpoint: URL;
     private streamableClient: StreamableHTTPClientTransport | null = null;
+    private sessionManager: SessionManager;
 
-    constructor(config: ProxyConfig) {
+    constructor(config: ProxyConfig, sessionManager: SessionManager) {
         if (!config.clientEndpoint) {
             throw new Error('Client endpoint is required');
         }
         this.endpoint = new URL(config.clientEndpoint);
+        this.sessionManager = sessionManager;
     }
 
     async startSession(session: Session): Promise<void> {
@@ -35,6 +34,11 @@ export class ProxiedStreamableMcpServer implements ProxiedMcpServer {
                 logger.error(`Streamable Proxied Server Error: ${error}`);
                 const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
                 await session.returnMessage(errorMessage);
+            };
+
+            this.streamableClient.onclose = async () => {
+                logger.info('Streamable session closed');
+                await session.onProxiedClientClose();
             };
 
             // Start the transport
