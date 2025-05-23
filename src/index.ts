@@ -1,24 +1,7 @@
-import { createClientEndpoint } from './clientEndpoints/clientEndpointFactory';
+import { startBridge } from './api';
 import { createConfig } from './config';
-import { SessionManagerImpl } from './serverEndpoints/sessionManager';
-import { createServerEndpoint } from './serverEndpoints/serverEndpointFactory';
-import { BridgeConfig } from './types/config';
-import { ServerEndpoint } from './serverEndpoints/serverEndpoint';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import logger from './logger';
-
-async function startBridge(config: BridgeConfig) : Promise<ServerEndpoint> {
-    logger.info('Starting bridge in mode:', config.serverMode);
-
-    const sessionManager = new SessionManagerImpl();
-
-    const clientEndpoint = createClientEndpoint(config, sessionManager);
-
-    const serverEndpoint = createServerEndpoint(config, clientEndpoint, sessionManager);
-    await serverEndpoint.start();
-
-    return serverEndpoint;
-}
 
 async function runBridge() {
     try {

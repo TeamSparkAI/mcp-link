@@ -1,13 +1,32 @@
 {
-  "name": "mcp-bridge",
-  "version": "1.0.0",
-  "description": "A command line application for MCP Bridge",
-  "main": "dist/index.js",
+  "name": "mcp-link",
+  "version": "1.0.1",
+  "description": "An MCP Link (Bridge) SDK and command line application",
+  "main": "dist/api.js",
+  "types": "dist/api.d.ts",
   "bin": {
-    "mcpbridge": "dist/index.js"
+    "mcplink": "dist/cli/index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bob/mcp-bridge.git"
+  },
+  "keywords": [
+    "mcp",
+    "link",
+    "sdk",
+    "cli"
+  ],
+  "author": "Bob",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/bob/mcp-bridge/issues"
+  },
+  "homepage": "https://github.com/bob/mcp-bridge#readme",
   "scripts": {
-    "build": "ncc build src/index.ts -o dist && echo '#!/usr/bin/env node' | cat - dist/index.js > dist/index.tmp && mv dist/index.tmp dist/index.js && chmod +x dist/index.js",
+    "build:cli": "ncc build src/index.ts -o dist/cli && echo '#!/usr/bin/env node' | cat - dist/cli/index.js > dist/cli/index.tmp && mv dist/cli/index.tmp dist/cli/index.js && chmod +x dist/cli/index.js",
+    "build:sdk": "tsc -p tsconfig.sdk.json",
+    "build": "npm run build:cli && npm run build:sdk",
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "test": "jest",
@@ -38,8 +57,13 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/api.d.ts",
+      "import": "./dist/api.js",
+      "require": "./dist/api.js"
+    },
+    "./cli": {
+      "import": "./dist/cli/index.js",
+      "require": "./dist/cli/index.js"
     }
   }
 }

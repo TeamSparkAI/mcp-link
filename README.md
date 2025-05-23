@@ -1,10 +1,10 @@
-# MCP Bridge
+# MCP Link
 
-MCP Bridge allows you to present any MCP server endpoint (stdio, sse, or streamable), and bridge it to any other server endpoint (stdio, sse, streamable, or a container).
+MCP Link is a bridge that allows you to present any MCP server endpoint (stdio, sse, or streamable), and bridge it to any other server endpoint (stdio, sse, streamable, or a container).
 
 When the target MCP server is stdio-container, an ephemeral Docker container will be spun up per MCP session and removed at the end of the session.
 
-![MCP Bridge](./assets/bridge.png)
+![MCP Link](./assets/mcplink.png)
 
 ## Development
 
@@ -21,8 +21,8 @@ This project uses Node.js and is implement in TypeScript.  It uses the Commander
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mcp-bridge.git
-cd mcp-bridge
+git clone https://github.com/yourusername/mcp-link.git
+cd mcp-link
 
 # Install dependencies
 npm install
@@ -30,7 +30,7 @@ npm install
 
 ### Global Installation
 
-To use MCP Bridge from anywhere in your system:
+To use MCP Link from anywhere in your system:
 
 ```bash
 npm install -g .
@@ -38,7 +38,7 @@ npm install -g .
 
 ### Running Without Installation
 
-You can also run MCP Bridge directly without installing:
+You can also run MCP Link directly without installing:
 
 ```bash
 # Using npm
@@ -51,7 +51,7 @@ node src/index.js -- [options]
 ## Usage
 
 ```bash
-mcpbridge [options]
+mcplink [options]
 ```
 
 ### Options
@@ -90,16 +90,16 @@ mcpbridge [options]
 
 ```bash
 # Run with stdio server and container client
-mcpbridge --serverMode=stdio --clientMode=stdio-container --image=mcp/fetch
+mcplink --serverMode=stdio --clientMode=stdio-container --image=mcp/fetch
 
 # Run with stdio server and container client (leveraging defaults)
-mcpbridge --image=mcp/fetch
+mcplink --image=mcp/fetch
 
 # Run with SSE server on custom port
-mcpbridge --serverMode=sse --port=8080 --image=mcp/fetch
+mcplink --serverMode=sse --port=8080 --image=mcp/fetch
 
 # Run with streamable server and stdio client
-mcpbridge --serverMode=streamable --clientMode=stdio --command=npx mcp-fetch
+mcplink --serverMode=streamable --clientMode=stdio --command=npx mcp-fetch
 ```
 
 ## License
