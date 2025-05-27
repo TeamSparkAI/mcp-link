@@ -2,7 +2,7 @@ import { StdioClientTransport, StdioServerParameters } from "@modelcontextprotoc
 import { ClientEndpoint } from "./clientEndpoint";
 import { jsonRpcError, Session } from "../serverEndpoints/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
-import { BridgeConfig } from "../types/config";
+import { ClientEndpointConfig } from "../types/config";
 import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
@@ -12,11 +12,11 @@ export class ClientEndpointStdio implements ClientEndpoint {
     private stdioClient: StdioClientTransport | null = null;
     private sessionManager: SessionManager;
   
-    constructor(config: BridgeConfig, sessionManager: SessionManager) {
-        if (!config.clientCommand) {
+    constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
+        if (!config.command) {
             throw new Error('Client command is required');
         }
-        this.command = config.clientCommand;
+        this.command = config.command;
         this.args = config.args || [];
         this.sessionManager = sessionManager;
     }

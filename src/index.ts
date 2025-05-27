@@ -5,10 +5,8 @@ import logger from './logger';
 
 async function runBridge() {
     try {
-        const config = createConfig();
-
         // Create a logging message processor as an example...
-        config.messageProcessor = {
+        const messageProcessor = {
             forwardMessageToServer: async (message: JSONRPCMessage) => {
                 logger.info('[MessageProcessor] Forwarding message to server', message);``
                 return message;
@@ -19,7 +17,8 @@ async function runBridge() {
             }
         }
 
-        const serverEndpoint = await startBridge(config);
+        const config = createConfig();
+        const serverEndpoint = await startBridge(config.server, config.clients, messageProcessor);
 
         process.on('unhandledRejection', (reason, promise) => {
             logger.error('Unhandled Rejection at:', promise, 'reason:', reason);

@@ -2,7 +2,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
 import { BaseSession } from './session';
 import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
-import { BridgeConfig } from '../types/config';
+import { ServerEndpointConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
 import { ServerEndpoint } from './serverEndpoint';
 import { MessageProcessor } from '../types/messageProcessor';
@@ -17,14 +17,27 @@ export class StdioSession extends BaseSession<StdioServerTransport> {
 }
 
 export class ServerEndpointStdio extends ServerEndpoint {
-    constructor(config: BridgeConfig, clientEndpoint: ClientEndpoint, sessionManager: SessionManagerImpl) {
-        super(config, clientEndpoint, sessionManager);
+    constructor(config: ServerEndpointConfig, sessionManager: SessionManagerImpl) {
+        super(config, sessionManager);
     }
 
-    async start(): Promise<void> {
+    async addClientEndpoint(name: string, clientEndpoint: ClientEndpoint): Promise<void> {
+        if (name === this.ONLY_CLIENT_ENDPOINT) {
+            super.addClientEndpoint(name, clientEndpoint);
+        } else {
+            throw new Error(`Stdio server endpoint only supports a single client endpoint, failed to add client endpoint: ${name}`);
+        }
+    }
+
+    async start(messageProcessor?: MessageProcessor): Promise<void> {
         logger.info('Starting stdio transport');
 
-        const session = new StdioSession(this.clientEndpoint, this.config.messageProcessor);
+        const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT);
+        if (!clientEndpoint ) {
+            throw new Error('Stdio server endpoint has no client endpoints condfigured, failed to start');
+        }
+
+        const session = new StdioSession(clientEndpoint, messageProcessor);
         session.on('clientEndpointClose', () => {
             logger.info('Client endpoint closed for stdio session:', session.id);
             this.sessionManager.removeSession(session.id);

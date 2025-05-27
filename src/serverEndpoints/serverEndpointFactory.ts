@@ -1,20 +1,24 @@
-import { BridgeConfig } from "../types/config";
-import { ClientEndpoint } from "../clientEndpoints/clientEndpoint";
+import { ServerEndpointConfig } from "../types/config";
 import { SessionManagerImpl } from "./sessionManager";
 import { ServerEndpoint } from "./serverEndpoint";
 import { ServerEndpointStdio } from "./serverEndpointStdio";
 import { ServerEndpointSse } from "./serverEndpointSse";
 import { ServerEndpointStreamable } from "./serverEndpointStreamable";
 
-export function createServerEndpoint(config: BridgeConfig, clientEndpoint: ClientEndpoint, sessionManager: SessionManagerImpl): ServerEndpoint {
-    switch (config.serverMode) {
+export function createServerEndpoint(config: ServerEndpointConfig, sessionManager: SessionManagerImpl): ServerEndpoint {
+    let serverEndpoint: ServerEndpoint;
+    switch (config.mode) {
         case 'stdio':
-            return new ServerEndpointStdio(config, clientEndpoint, sessionManager);
+            serverEndpoint = new ServerEndpointStdio(config, sessionManager);
+            break;
         case 'sse':
-            return new ServerEndpointSse(config, clientEndpoint, sessionManager);
+            serverEndpoint = new ServerEndpointSse(config, sessionManager);
+            break;
         case 'streamable':
-            return new ServerEndpointStreamable(config, clientEndpoint, sessionManager);
+            serverEndpoint = new ServerEndpointStreamable(config, sessionManager);
+            break;
         default:
-            throw new Error(`Unknown server transport: ${config.serverMode}`);
+            throw new Error(`Unknown server transport: ${config.mode}`);
     }
+    return serverEndpoint;
 }

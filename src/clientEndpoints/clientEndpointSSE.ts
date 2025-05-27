@@ -2,7 +2,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse";
 import { ClientEndpoint } from "./clientEndpoint";
 import { jsonRpcError, Session } from "../serverEndpoints/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
-import { BridgeConfig } from "../types/config";
+import { ClientEndpointConfig } from "../types/config";
 import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
@@ -11,12 +11,12 @@ export class ClientEndpointSse implements ClientEndpoint {
     private sseClient: SSEClientTransport | null = null;
     private sessionManager: SessionManager;
   
-    constructor(config: BridgeConfig, sessionManager: SessionManager) {
+    constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
         this.sessionManager = sessionManager;
-      if (!config.clientEndpoint) {
+      if (!config.endpoint) {
         throw new Error('Client endpoint is required');
       }
-      this.endpoint = new URL(config.clientEndpoint);
+      this.endpoint = new URL(config.endpoint);
     }
   
     async startSession(session: Session): Promise<void> {  

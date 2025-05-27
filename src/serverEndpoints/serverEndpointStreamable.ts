@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { BaseSession, jsonRpcError } from './session.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types';
-import { BridgeConfig } from '../types/config';
+import { ServerEndpointConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
 import { ServerEndpoint } from './serverEndpoint';
 import { MessageProcessor } from '../types/messageProcessor';
@@ -21,13 +21,18 @@ export class StreamableSession extends BaseSession<StreamableHTTPServerTransport
 }
 
 export class ServerEndpointStreamable extends ServerEndpoint {
-    constructor(config: BridgeConfig, clientEndpoint: ClientEndpoint, sessionManager: SessionManagerImpl) {
-        super(config, clientEndpoint, sessionManager);
+    constructor(config: ServerEndpointConfig, sessionManager: SessionManagerImpl) {
+        super(config, sessionManager);
     }
 
-    async start(): Promise<void> {
-        const port = this.config.serverPort || 3000;
-        const host = this.config.serverHost || 'localhost';
+    async start(messageProcessor?: MessageProcessor): Promise<void> {
+        const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT);
+        if (!clientEndpoint ) {
+            throw new Error('SSE server endpoint has no client endpoints condfigured, failed to start');
+        }
+
+        const port = this.config.port || 3000;
+        const host = this.config.host || 'localhost';
 
         const app = express();
         const server = createServer(app);
@@ -76,7 +81,7 @@ export class ServerEndpointStreamable extends ServerEndpoint {
                     }
                 }
 
-                const session = new StreamableSession(transport, newSessionId, this.clientEndpoint, this.config.messageProcessor);
+                const session = new StreamableSession(transport, newSessionId, clientEndpoint, messageProcessor);
                 session.on('clientEndpointClose', () => {
                     logger.info('Client endpoint closed for streamable session:', session.id);
                     this.sessionManager.removeSession(session.id);

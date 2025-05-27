@@ -4,7 +4,7 @@ import { jsonRpcError, Session } from "../serverEndpoints/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ReadBuffer, serializeMessage } from "@modelcontextprotocol/sdk/shared/stdio";
 import { PassThrough } from 'stream';
-import { BridgeConfig } from "../types/config";
+import { ClientEndpointConfig } from "../types/config";
 import { SessionManager } from '../serverEndpoints/sessionManager';
 import logger from "../logger";
 
@@ -19,12 +19,12 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
     private stdinStream: NodeJS.ReadWriteStream | null = null;
     private sessionManager: SessionManager;
   
-    constructor(config: BridgeConfig, sessionManager: SessionManager) {
-        if (!config.clientContainerImage) {
+    constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
+        if (!config.containerImage) {
             throw new Error('Client container image is required');
         }
-        this.image = config.clientContainerImage;
-        this.volumes = config.volumes || [];
+        this.image = config.containerImage;
+        this.volumes = config.containerVolumes || [];
         this.env = config.env || {};
         this.args = config.args || [];
         this.sessionManager = sessionManager;

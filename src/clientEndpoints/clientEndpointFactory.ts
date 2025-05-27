@@ -3,11 +3,11 @@ import { ClientEndpointSse } from "./clientEndpointSSE";
 import { ClientEndpointStdioContainer } from "./clientEndpointStdioContainer";
 import { ClientEndpointStdio } from "./clientEndpointStdio";
 import { ClientEndpoiontStreamable } from "./clientEndpointStreamable";
-import { BridgeConfig } from "../types/config";
+import { ClientEndpointConfig } from "../types/config";
 import { SessionManager } from "../serverEndpoints/sessionManager";
 
-export function createClientEndpoint(config: BridgeConfig, sessionManager: SessionManager): ClientEndpoint {
-    switch (config.clientMode) {
+export function createClientEndpoint(config: ClientEndpointConfig, sessionManager: SessionManager): ClientEndpoint {
+    switch (config.mode) {
         case 'stdio':
             return new ClientEndpointStdio(config, sessionManager);
         case 'sse':
@@ -17,6 +17,6 @@ export function createClientEndpoint(config: BridgeConfig, sessionManager: Sessi
         case 'stdio-container':
             return new ClientEndpointStdioContainer(config, sessionManager);
         default:
-            throw new Error(`Unsupported client mode: ${config.clientMode}`);
+            throw new Error(`Unsupported client mode: ${config.mode}`);
     }
 }

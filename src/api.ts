@@ -3,18 +3,33 @@ import { createClientEndpoint } from "./clientEndpoints/clientEndpointFactory";
 import { ServerEndpoint } from "./serverEndpoints/serverEndpoint";
 import { createServerEndpoint } from "./serverEndpoints/serverEndpointFactory";
 import { SessionManagerImpl } from "./serverEndpoints/sessionManager";
-import { BridgeConfig } from "./types/config";
+import { ClientEndpointConfig, ServerEndpointConfig } from "./types/config";
 import logger from "./logger";
+import { MessageProcessor } from "./types/messageProcessor";
 
-export async function startBridge(config: BridgeConfig) : Promise<ServerEndpoint> {
-    logger.info('Starting bridge in mode:', config.serverMode);
+export async function startBridge(server: ServerEndpointConfig, clients: ClientEndpointConfig[], messageProcessor?: MessageProcessor) : Promise<ServerEndpoint> {
+    logger.info('Starting bridge in mode:', server.mode);
 
     const sessionManager = new SessionManagerImpl();
 
-    const clientEndpoint = createClientEndpoint(config, sessionManager);
+    const serverEndpoint = createServerEndpoint(server, sessionManager);
 
-    const serverEndpoint = createServerEndpoint(config, clientEndpoint, sessionManager);
-    await serverEndpoint.start();
+    if (clients.length == 0) {
+        throw new Error('No clients configured');
+    } else if (clients.length == 1 && !clients[0].name) {
+        const clientEndpoint = createClientEndpoint(clients[0], sessionManager);
+        serverEndpoint.setClientEndpoint(clientEndpoint);
+    } else {
+        for (const client of clients) {
+            if (!client.name) {
+                throw new Error('Client name is required for multiple clients');
+            }
+            const clientEndpoint = createClientEndpoint(client, sessionManager);
+            serverEndpoint.addClientEndpoint(client.name!, clientEndpoint);
+        }
+    }
+
+    await serverEndpoint.start(messageProcessor);
 
     return serverEndpoint;
 }

@@ -5,7 +5,7 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { BaseSession } from './session';
-import { BridgeConfig } from '../types/config';
+import { ServerEndpointConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
 import { ServerEndpoint } from './serverEndpoint';
 import { MessageProcessor } from '../types/messageProcessor';
@@ -19,14 +19,19 @@ export class SseSession extends BaseSession<SSEServerTransport> {
 }
 
 export class ServerEndpointSse extends ServerEndpoint {
-    constructor(config: BridgeConfig, clientEndpoint: ClientEndpoint, sessionManager: SessionManagerImpl) {
-        super(config, clientEndpoint, sessionManager);
+    constructor(config: ServerEndpointConfig, sessionManager: SessionManagerImpl) {
+        super(config, sessionManager);
     }
 
-    async start(): Promise<void> {
-        logger.info(`Starting SSE server transport on port ${this.config.serverPort}`);
-        const port = this.config.serverPort || 3000;
-        const host = this.config.serverHost || 'localhost';
+    async start(messageProcessor?: MessageProcessor): Promise<void> {
+        const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT);
+        if (!clientEndpoint ) {
+            throw new Error('SSE server endpoint has no client endpoints condfigured, failed to start');
+        }
+
+        logger.info(`Starting SSE server transport on port ${this.config.port}`);
+        const port = this.config.port || 3000;
+        const host = this.config.host || 'localhost';
 
         const app = express();
         const server = createServer(app);
@@ -39,7 +44,7 @@ export class ServerEndpointSse extends ServerEndpoint {
             const transport = new SSEServerTransport('/messages', res);
             logger.info('Received SSE request, created new session:', transport.sessionId);
             
-            const session = new SseSession(transport, this.clientEndpoint, this.config.messageProcessor);
+            const session = new SseSession(transport, clientEndpoint, messageProcessor);
             session.on('clientEndpointClose', () => {
                 logger.info('Client endpoint closed for SSE session:', session.id);
                 this.sessionManager.removeSession(session.id);

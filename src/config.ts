@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { BridgeConfig, BridgeServerMode, BridgeClientMode } from './types/config';
+import { BridgeConfig, BridgeServerMode, BridgeClientMode, ServerEndpointConfig, ClientEndpointConfig } from './types/config';
 import logger from './logger';
 
 import dotenv from 'dotenv';
@@ -88,14 +88,17 @@ Examples:
     const options = program.opts<CommandOptions>();
     const args = program.args;
 
-    return {
-        serverMode: parseServerMode(options.serverMode || process.env.SERVER_MODE),
-        serverPort: parseInt(options.port || process.env.PORT || '3000'),
-        serverHost: options.host || process.env.HOST || 'localhost',
-        clientMode: parseClientMode(options.clientMode || process.env.CLIENT_MODE),
-        clientContainerImage: options.image || process.env.CONTAINER_IMAGE,
-        clientEndpoint: options.endpoint || process.env.CLIENT_ENDPOINT,
-        clientCommand: options.command || process.env.CLIENT_COMMAND,
+    const serverConfig: ServerEndpointConfig = {
+        mode: parseServerMode(options.serverMode || process.env.SERVER_MODE),
+        port: parseInt(options.port || process.env.PORT || '3000'),
+        host: options.host || process.env.HOST || 'localhost'
+    };
+
+    const clientConfig: ClientEndpointConfig = {
+        mode: parseClientMode(options.clientMode || process.env.CLIENT_MODE),
+        containerImage: options.image || process.env.CONTAINER_IMAGE,
+        endpoint: options.endpoint || process.env.CLIENT_ENDPOINT,
+        command: options.command || process.env.CLIENT_COMMAND,
         env: options.env.reduce((acc, curr) => {
             const [key, value] = curr.split('=');
             if (key && value) {
@@ -103,7 +106,12 @@ Examples:
             }
             return acc;
         }, {} as Record<string, string>),
-        volumes: options.volume,
-        args: args,
+        containerVolumes: options.volume,
+        args: args
+    };
+
+    return {
+        server: serverConfig,
+        clients: [clientConfig]
     };
 }

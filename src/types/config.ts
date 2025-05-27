@@ -9,16 +9,25 @@ export interface ContainerVolume {
     options?: string;
 }
 
-export interface BridgeConfig {
-    serverMode: BridgeServerMode;
-    serverPort?: number;
-    serverHost?: string;
-    clientMode: BridgeClientMode;
-    clientContainerImage?: string;
-    clientEndpoint?: string;
-    clientCommand?: string;
+export interface ServerEndpointConfig {
+    mode: BridgeServerMode;
+    port?: number;
+    host?: string;
+}
+
+export interface ClientEndpointConfig {
+    name?: string;
+    mode: BridgeClientMode;
+    endpoint?: string;
+    endpointHeaders?: Record<string, string>;
+    command?: string;
     env?: Record<string, string>;
-    volumes?: string[];
     args?: string[];
-    messageProcessor?: MessageProcessor;
+    containerImage?: string;
+    containerVolumes?: string[];
+}
+
+export interface BridgeConfig {
+    server: ServerEndpointConfig;
+    clients: ClientEndpointConfig[];
 }

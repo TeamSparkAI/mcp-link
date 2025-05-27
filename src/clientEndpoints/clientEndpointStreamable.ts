@@ -2,7 +2,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ClientEndpoint } from "./clientEndpoint";
 import { jsonRpcError, Session } from "../serverEndpoints/session";
-import { BridgeConfig } from "../types/config";
+import { ClientEndpointConfig } from "../types/config";
 import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
@@ -11,11 +11,11 @@ export class ClientEndpoiontStreamable implements ClientEndpoint {
     private streamableClient: StreamableHTTPClientTransport | null = null;
     private sessionManager: SessionManager;
 
-    constructor(config: BridgeConfig, sessionManager: SessionManager) {
-        if (!config.clientEndpoint) {
+    constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
+        if (!config.endpoint) {
             throw new Error('Client endpoint is required');
         }
-        this.endpoint = new URL(config.clientEndpoint);
+        this.endpoint = new URL(config.endpoint);
         this.sessionManager = sessionManager;
     }
 
