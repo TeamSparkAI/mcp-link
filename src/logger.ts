@@ -29,7 +29,7 @@ winston.addColors(colors);
 
 // Define the format for the logs
 const format = winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:SSS' }),
     winston.format.colorize({ all: true }),
     winston.format.printf((info) => {
         const { timestamp, level, message, ...rest } = info as any;
