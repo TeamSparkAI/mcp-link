@@ -23,7 +23,7 @@ export class ClientEndpointStdio implements ClientEndpoint {
   
     async startSession(session: Session): Promise<void> {  
         // Connect to the SSE endpoint
-        logger.info('Connecting to stdio client endpoint:', this.command);
+        logger.debug('Connecting to stdio client endpoint:', this.command);
         const params: StdioServerParameters = { command: this.command, args: this.args };
         this.stdioClient = new StdioClientTransport(params);
         await this.stdioClient.start();
@@ -40,7 +40,7 @@ export class ClientEndpointStdio implements ClientEndpoint {
         };
 
         this.stdioClient.onclose = async () => {
-            logger.info('Stdio client session closed');
+            logger.debug('Stdio client session closed');
             await session.onClientEndpointClose();
         };
     }
@@ -53,7 +53,7 @@ export class ClientEndpointStdio implements ClientEndpoint {
     }
    
     async closeSession(): Promise<void> {
-        logger.info('Closing stdio client endpoint');
+        logger.debug('Closing stdio client endpoint');
         if (this.stdioClient) {
             logger.debug('StdioClient exists, calling close()');
             await this.stdioClient.close();

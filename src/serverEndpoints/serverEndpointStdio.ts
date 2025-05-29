@@ -5,12 +5,12 @@ import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import { ServerEndpointConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
 import { ServerEndpoint } from './serverEndpoint';
-import { MessageProcessor } from '../types/messageProcessor';
+import { AuthorizedMessageProcessor, MessageProcessor } from '../types/messageProcessor';
 import logger from '../logger';
 
 // Session class to manage stdio transport and message handling
 export class StdioSession extends BaseSession<StdioServerTransport> {
-    constructor(clientEndpoint: ClientEndpoint, messageProcessor?: MessageProcessor) {
+    constructor(clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor) {
         const transport = new StdioServerTransport();
         super(`stdio-${Date.now()}`, clientEndpoint, transport, 'Stdio', messageProcessor);
     }
@@ -29,7 +29,7 @@ export class ServerEndpointStdio extends ServerEndpoint {
         }
     }
 
-    async start(messageProcessor?: MessageProcessor): Promise<void> {
+    async start(messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
         logger.info('Starting stdio transport');
 
         const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT);
@@ -38,8 +38,10 @@ export class ServerEndpointStdio extends ServerEndpoint {
         }
 
         const session = new StdioSession(clientEndpoint, messageProcessor);
+        this.sessionManager.addSession(session);
+
         session.on('clientEndpointClose', () => {
-            logger.info('Client endpoint closed for stdio session:', session.id);
+            logger.debug('Client endpoint closed for stdio session:', session.id);
             this.sessionManager.removeSession(session.id);
         });
 
@@ -48,7 +50,7 @@ export class ServerEndpointStdio extends ServerEndpoint {
             logger.debug('Stdio server transport - received message', message);
             session.forwardMessageToServer(message);
         };
-            
+
         try {
             await session.start();
         } catch (error) {
@@ -57,11 +59,11 @@ export class ServerEndpointStdio extends ServerEndpoint {
         }
     }
 
-    async stop(): Promise<void> {
-        logger.info('Stopping stdio transport');
+    async stop(terminateProcess: boolean = true): Promise<void> {
+        logger.debug('Stopping stdio transport');
+        await super.stop(terminateProcess);
         process.stdout.end();
         process.stderr.end();
         process.stdin.end();
-        await super.stop();
-   }
+    }
 }

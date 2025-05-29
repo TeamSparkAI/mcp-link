@@ -1,4 +1,5 @@
 import winston from 'winston';
+import { LogLevel } from './types/config';
 
 // Define log levels
 const levels = {
@@ -66,5 +67,10 @@ const logger = winston.createLogger({
     format,
     transports,
 });
+
+// Function to update log level
+export function setLogLevel(level: LogLevel) {
+    logger.level = level;
+}
 
 export default logger; 

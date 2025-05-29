@@ -45,7 +45,7 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
                 const event = JSON.parse(chunk.toString());
                 if (event.Type === 'container' && event.Action === 'die') {
                     const containerSessionId = event.Actor.Attributes['mcp.sessionId'];
-                    logger.info('Container stopped for sessionId:', containerSessionId);
+                    logger.debug('Container stopped for sessionId:', containerSessionId);
                     const session = this.sessionManager.getSession(containerSessionId);
                     if (session) {
                         session.onClientEndpointClose();
@@ -57,7 +57,7 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
                 logger.error('Error receiving Docker events:', err);
             });
 
-            logger.info('Listening for Docker container stop events...');
+            logger.debug('Listening for Docker container stop events...');
         } catch (error) {
             logger.error('Error connecting to Docker event stream:', error);
         }
@@ -97,7 +97,7 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
         });
     
         stdout.on('end', () => {
-            logger.info('Container stdout stream ended');
+            logger.debug('Container stdout stream ended');
             stdout.removeAllListeners();
             readBuffer.clear();
         });
@@ -105,7 +105,7 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
 
     async initializeContainer(image: string, session: Session): Promise<{ container: Container, stdin: NodeJS.ReadWriteStream }> {
         try {
-            logger.info('Creating new container:', image);
+            logger.debug('Creating new container:', image);
             const options: ContainerCreateOptions = {
                 Image: image,
                 OpenStdin: true,
@@ -127,13 +127,13 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
                 }
             }
 
-            logger.info('Creating container with options:', options);
+            logger.debug('Creating container with options:', options);
 
             const container = await docker.createContainer(options);
             await container.start();
     
             const containerInfo = await container.inspect();
-            logger.info('Started container:', containerInfo.Name);
+            logger.debug('Started container:', containerInfo.Name);
         
             const stream = await container.attach({
                 stream: true,
@@ -148,9 +148,9 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
             const stderr = new PassThrough();
             docker.modem.demuxStream(stream, stdout, stderr);
         
-            logger.info('[initializeContainer] Setting up message handling');
+            logger.debug('[initializeContainer] Setting up message handling');
             this.setupMessageHandling(stdout, session);
-            logger.info('Container initialized and ready');
+            logger.debug('Container initialized and ready');
             return { container, stdin: stream };
         } catch (error) {
             logger.error('Error initializing container', image, error);
@@ -159,12 +159,12 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
     }
     
     async startSession(session: Session): Promise<void> {
-        logger.info('[startSession] Starting session');
+        logger.debug('[startSession] Starting session');
         const { container, stdin } = await this.initializeContainer(this.image, session);
-        logger.info('[startSession] Container initialized, setting up session');
+        logger.debug('[startSession] Container initialized, setting up session');
         this.container = container;
         this.stdinStream = stdin;
-        logger.info('[startSession] Session setup complete');
+        logger.debug('[startSession] Session setup complete');
     }
   
     async sendMessage(message: JSONRPCMessage): Promise<void> {

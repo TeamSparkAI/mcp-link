@@ -1,8 +1,8 @@
 import { ClientEndpoint } from "../clientEndpoints/clientEndpoint";
 import { ServerEndpointConfig } from "../types/config";
 import { SessionManagerImpl } from "./sessionManager";
-import logger from "../logger";
-import { MessageProcessor } from "../types/messageProcessor";
+import logger, { setLogLevel } from "../logger";
+import { AuthorizedMessageProcessor, MessageProcessor } from "../types/messageProcessor";
 
 
 export abstract class ServerEndpoint {
@@ -11,7 +11,9 @@ export abstract class ServerEndpoint {
     
     constructor(
         protected config: ServerEndpointConfig, 
-        protected sessionManager: SessionManagerImpl) {
+        protected sessionManager: SessionManagerImpl
+    ) {
+        setLogLevel(config.logLevel || 'info');
     }
 
     async addClientEndpoint(name: string, clientEndpoint: ClientEndpoint): Promise<void> {
@@ -22,19 +24,32 @@ export abstract class ServerEndpoint {
         this.addClientEndpoint(this.ONLY_CLIENT_ENDPOINT, clientEndpoint);
     }
 
-    abstract start(messageProcessor?: MessageProcessor): Promise<void>;
+    abstract start(messageProcessor?: AuthorizedMessageProcessor): Promise<void>;
 
-    async stop(): Promise<void> {
+    async stop(terminateProcess: boolean = true): Promise<void> {
         logger.info(`Stopping ${this.constructor.name} transport`);
         try {
             // Close all sessions (which will close their client endpoints)
-            this.sessionManager.getSessions().forEach(session => session.close());
+            const sessions = this.sessionManager.getSessions();
+            logger.debug(`Closing ${sessions.length} sessions`);
+            await Promise.all(sessions.map(session => {
+                logger.debug(`Closing session ${session.id}`);
+                return session.close();
+            }));
+            logger.debug('Terminate process:', terminateProcess);
             // We wait for async shutdown of the client endpoints
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            process.exit(0);
+            //await new Promise(resolve => setTimeout(resolve, 1000));
+            if (terminateProcess) {
+                logger.debug('Terminating process');
+                process.exit(0);
+            }
         } catch (error) {
             logger.error('Error stopping transport:', error);
-            process.exit(1);
+            if (terminateProcess) {
+                process.exit(1);
+            } else {
+                throw error;
+            }
         }
     }
 }

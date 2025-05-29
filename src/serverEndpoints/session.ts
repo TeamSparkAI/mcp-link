@@ -3,7 +3,7 @@ import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport";
 import { EventEmitter } from 'events';
 import logger from '../logger';
-import { MessageProcessor } from "../types/messageProcessor";
+import { AuthorizedMessageProcessor, MessageProcessor } from "../types/messageProcessor";
 
 export function jsonRpcError(message: string, code: number = -32000): JSONRPCMessage {
     return {
@@ -41,15 +41,17 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     protected clientEndpoint: ClientEndpoint;
     private _transport: T;
     private transportType: string;
-    private messageProcessor?: MessageProcessor;
+    private messageProcessor?: AuthorizedMessageProcessor;
+    private authPayload?: any;
 
-    constructor(sessionId: string, clientEndpoint: ClientEndpoint, transport: T, transportType: string, messageProcessor?: MessageProcessor) {
+    constructor(sessionId: string, clientEndpoint: ClientEndpoint, transport: T, transportType: string, messageProcessor?: AuthorizedMessageProcessor) {
         super();
         this.sessionId = sessionId;
         this.clientEndpoint = clientEndpoint;
         this._transport = transport;
         this.transportType = transportType;
         this.messageProcessor = messageProcessor;
+        this.authPayload = undefined;
     }
 
     get id(): string {
@@ -64,10 +66,16 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         try {
             await this.clientEndpoint.startSession(this);
             await this.transport.start();
-            logger.info(`Started ${this.transportType} session ${this.sessionId}`);
+            logger.debug(`Started ${this.transportType} session ${this.sessionId}`);
         } catch (error) {
             logger.error(`Error starting ${this.transportType} session ${this.sessionId}:`, error);
             throw error;
+        }
+    }
+
+    async authorize(authHeader: string | undefined): Promise<any> {
+        if (this.messageProcessor) {
+            this.authPayload = await this.messageProcessor.authorize(authHeader);
         }
     }
 
@@ -75,7 +83,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         if (!this.isActive) return;
         logger.debug('[Session] Forwarding message to server (via client endpoint):', message);
         if (this.messageProcessor) {
-            message = await this.messageProcessor.forwardMessageToServer(message);
+            message = await this.messageProcessor.forwardMessageToServer(this.sessionId, message, this.authPayload);
         }
         await this.clientEndpoint.sendMessage(message);
     }
@@ -84,7 +92,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         if (!this.isActive) return;
         logger.debug('[Session] Sending response to client (via server endpoint):', message);
         if (this.messageProcessor) {
-            message = await this.messageProcessor.returnMessageToClient(message);
+            message = await this.messageProcessor.returnMessageToClient(this.sessionId, message, this.authPayload);
         }
         await this.transport.send(message);
     }
@@ -100,8 +108,8 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     }
 
     async onClientEndpointClose(): Promise<void> {
-        logger.info(`Client endpoint closed for ${this.transportType} session ${this.sessionId}`);
-        this.close();
+        logger.debug(`Client endpoint closed for ${this.transportType} session ${this.sessionId}`);
+        await this.close();
         // Server transports will be listening - they will remove the session from the session manager and do any other protocol-specific cleanup
         this.emit('clientEndpointClose');
     }

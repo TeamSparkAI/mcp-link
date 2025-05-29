@@ -6,9 +6,10 @@ import { SessionManagerImpl } from "./serverEndpoints/sessionManager";
 import { ClientEndpointConfig, ServerEndpointConfig } from "./types/config";
 import logger from "./logger";
 import { MessageProcessor } from "./types/messageProcessor";
+import { MessageProcessorWrapper } from "./messageProcessorWrapper";
 
 export async function startBridge(server: ServerEndpointConfig, clients: ClientEndpointConfig[], messageProcessor?: MessageProcessor) : Promise<ServerEndpoint> {
-    logger.info('Starting bridge in mode:', server.mode);
+    logger.debug('Starting bridge in mode:', server.mode);
 
     const sessionManager = new SessionManagerImpl();
 
@@ -29,7 +30,7 @@ export async function startBridge(server: ServerEndpointConfig, clients: ClientE
         }
     }
 
-    await serverEndpoint.start(messageProcessor);
+    await serverEndpoint.start(messageProcessor ? new MessageProcessorWrapper(messageProcessor) : undefined);
 
     return serverEndpoint;
 }

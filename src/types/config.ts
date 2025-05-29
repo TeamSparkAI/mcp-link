@@ -3,6 +3,8 @@ import { MessageProcessor } from "./messageProcessor";
 export type BridgeServerMode = 'sse' | 'stdio' | 'streamable';
 export type BridgeClientMode = 'stdio' | 'sse' | 'streamable' | 'stdio-container';
 
+export type LogLevel = 'error' | 'warn' | 'info' | 'http' | 'debug';
+
 export interface ContainerVolume {
     source: string;
     destination: string;
@@ -13,6 +15,7 @@ export interface ServerEndpointConfig {
     mode: BridgeServerMode;
     port?: number;
     host?: string;
+    logLevel?: LogLevel;
 }
 
 export interface ClientEndpointConfig {

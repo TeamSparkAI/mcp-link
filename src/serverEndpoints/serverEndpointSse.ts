@@ -4,65 +4,97 @@ import { createServer } from 'http';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
-import { BaseSession } from './session';
+import { BaseSession, jsonRpcError } from './session';
 import { ServerEndpointConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
 import { ServerEndpoint } from './serverEndpoint';
-import { MessageProcessor } from '../types/messageProcessor';
+import { AuthorizedMessageProcessor, MessageProcessor } from '../types/messageProcessor';
 import logger from '../logger';
 
 // Session class to manage SSE transport and message handling
 export class SseSession extends BaseSession<SSEServerTransport> {
-    constructor(transport: SSEServerTransport, clientEndpoint: ClientEndpoint, messageProcessor?: MessageProcessor) {
+    constructor(transport: SSEServerTransport, clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor) {
         super(transport.sessionId || '', clientEndpoint, transport, 'SSE', messageProcessor);
     }
 }
 
 export class ServerEndpointSse extends ServerEndpoint {
+    private server?: ReturnType<typeof createServer>;
+
     constructor(config: ServerEndpointConfig, sessionManager: SessionManagerImpl) {
         super(config, sessionManager);
     }
 
-    async start(messageProcessor?: MessageProcessor): Promise<void> {
-        const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT);
-        if (!clientEndpoint ) {
-            throw new Error('SSE server endpoint has no client endpoints condfigured, failed to start');
+    private async handleSseRequest(req: Request, res: Response, clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor, messagesPath: string = '/messages'): Promise<void> {
+        const transport = new SSEServerTransport(messagesPath, res);
+        logger.debug('Received SSE request, created new session:', transport.sessionId);
+        
+        const session = new SseSession(transport, clientEndpoint, messageProcessor);
+        try {
+            await session.authorize(req.headers['authorization']);
+        } catch (error) {
+            logger.error('Error authorizing session:', error);
+            res.status(401).json(jsonRpcError('Unauthorized'));
+            return;
         }
 
-        logger.info(`Starting SSE server transport on port ${this.config.port}`);
+        session.on('clientEndpointClose', () => {
+            logger.debug('Client endpoint closed for SSE session:', session.id);
+            this.sessionManager.removeSession(session.id);
+        });
+
+        this.sessionManager.addSession(session);
+        await session.start();
+
+        // Session close handler
+        req.on('close', () => {
+            logger.debug('SSE connection closed for session:', transport.sessionId);
+            const session = this.sessionManager.getSession(transport.sessionId!);
+            if (session) {
+                session.close();
+                this.sessionManager.removeSession(session.id);
+            }
+        });
+    }
+
+    async start(messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
+        if (this.clientEndpoints.size === 0) {
+            throw new Error('SSE server endpoint has no client endpoints configured, failed to start');
+        }
+
         const port = this.config.port || 3000;
         const host = this.config.host || 'localhost';
 
+        logger.info(`Starting SSE server transport on port ${port}`);
+
         const app = express();
-        const server = createServer(app);
+        this.server = createServer(app);
 
         app.use(cors());
         app.use(express.json());
 
-        // Create SSE endpoint handler
-        app.get('/sse', async (req: Request, res: Response) => {
-            const transport = new SSEServerTransport('/messages', res);
-            logger.info('Received SSE request, created new session:', transport.sessionId);
-            
-            const session = new SseSession(transport, clientEndpoint, messageProcessor);
-            session.on('clientEndpointClose', () => {
-                logger.info('Client endpoint closed for SSE session:', session.id);
-                this.sessionManager.removeSession(session.id);
+        // Handle SSE endpoint based on client endpoint configuration
+        if (this.clientEndpoints.size === 1 && this.clientEndpoints.has(this.ONLY_CLIENT_ENDPOINT)) {
+            // Single client endpoint case - use /sse
+            const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT)!;
+            app.get('/sse', async (req: Request, res: Response) => {
+                await this.handleSseRequest(req, res, clientEndpoint, messageProcessor);
             });
-
-            this.sessionManager.addSession(session);
-            await session.start();
-
-            // Session close handler
-            req.on('close', () => {
-                logger.info('SSE connection closed for session:', transport.sessionId);
-                const session = this.sessionManager.getSession(transport.sessionId!);
-                if (session) {
-                    session.close();
-                    this.sessionManager.removeSession(session.id);
+        } else {
+            // Multiple client endpoints case - use /:server/sse
+            app.get('/:server/sse', async (req: Request, res: Response) => {
+                const serverName = req.params.server;
+                const clientEndpoint = this.clientEndpoints.get(serverName);
+                
+                if (!clientEndpoint) {
+                    logger.error(`No client endpoint found for server: ${serverName}`);
+                    res.status(404).json(jsonRpcError(`Server ${serverName} not found`));
+                    return;
                 }
+
+                await this.handleSseRequest(req, res, clientEndpoint, messageProcessor, `/${serverName}/messages`);
             });
-        });
+        }
 
         // Handle incoming messages
         app.post('/messages', async (req: Request, res: Response) => {
@@ -101,8 +133,21 @@ export class ServerEndpointSse extends ServerEndpoint {
             }
         });
 
-        server.listen(port, host, () => {
-            logger.info(`SSE server endpoint listening on http://${host}:${port}`);
+        this.server.listen(port, host, () => {
+            logger.debug(`SSE server endpoint listening on http://${host}:${port}`);
         });
+    }
+
+    async stop(terminateProcess: boolean = true): Promise<void> {
+        if (this.server) {
+            logger.debug('Shutting down SSE server endpoint');
+            await new Promise<void>((resolve) => {
+                this.server!.close(() => {
+                    logger.debug('SSE server endpoint shut down successfully');
+                    resolve();
+                });
+            });
+        }
+        await super.stop(terminateProcess);
     }
 }

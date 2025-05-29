@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { BridgeConfig, BridgeServerMode, BridgeClientMode, ServerEndpointConfig, ClientEndpointConfig } from './types/config';
+import { BridgeConfig, BridgeServerMode, BridgeClientMode, ServerEndpointConfig, ClientEndpointConfig, LogLevel } from './types/config';
 import logger from './logger';
 
 import dotenv from 'dotenv';
@@ -43,6 +43,7 @@ interface CommandOptions {
     command?: string;
     env: string[];
     volume: string[];
+    logLevel?: LogLevel;
 }
 
 // Function to collect multiple values into an array
@@ -67,6 +68,7 @@ export function createConfig(): BridgeConfig {
         .option('--command <string>', 'Client command')
         .option('--env <value>', 'Environment variable (key=value)', collect, [])
         .option('--volume <value>', 'Volume mapping', collect, [])
+        .option('--logLevel <level>', 'Log level (error, warn, info, http, debug)', 'info')
         .allowUnknownOption()
         .allowExcessArguments()
         .addHelpText('after', `
@@ -91,7 +93,8 @@ Examples:
     const serverConfig: ServerEndpointConfig = {
         mode: parseServerMode(options.serverMode || process.env.SERVER_MODE),
         port: parseInt(options.port || process.env.PORT || '3000'),
-        host: options.host || process.env.HOST || 'localhost'
+        host: options.host || process.env.HOST || 'localhost',
+        logLevel: options.logLevel as LogLevel || process.env.LOG_LEVEL as LogLevel || 'info'
     };
 
     const clientConfig: ClientEndpointConfig = {

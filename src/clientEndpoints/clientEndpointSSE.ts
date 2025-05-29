@@ -21,7 +21,7 @@ export class ClientEndpointSse implements ClientEndpoint {
   
     async startSession(session: Session): Promise<void> {  
         // Connect to the SSE endpoint
-        logger.info(`Connecting to SSE client endpoint: ${this.endpoint}`);
+        logger.debug(`Connecting to SSE client endpoint: ${this.endpoint}`);
         this.sseClient = new SSEClientTransport(this.endpoint);
         await this.sseClient.start();
 
@@ -37,7 +37,7 @@ export class ClientEndpointSse implements ClientEndpoint {
         };
 
         this.sseClient.onclose = async () => {
-            logger.info('SSE client session closed');
+            logger.debug('SSE client session closed');
             await session.onClientEndpointClose();
         };
     }

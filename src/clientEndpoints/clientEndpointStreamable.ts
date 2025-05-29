@@ -22,7 +22,7 @@ export class ClientEndpoiontStreamable implements ClientEndpoint {
     async startSession(session: Session): Promise<void> {
         try {
             // Create a new transport for this session
-            logger.info(`Connecting to Streamable client endpoint: ${this.endpoint}`);
+            logger.debug(`Connecting to Streamable client endpoint: ${this.endpoint}`);
             this.streamableClient = new StreamableHTTPClientTransport(this.endpoint);
 
             this.streamableClient.onmessage = async (message: JSONRPCMessage) => {
@@ -37,13 +37,13 @@ export class ClientEndpoiontStreamable implements ClientEndpoint {
             };
 
             this.streamableClient.onclose = async () => {
-                logger.info('Streamable client session closed');
+                logger.debug('Streamable client session closed');
                 await session.onClientEndpointClose();
             };
 
             // Start the transport
             await this.streamableClient.start();
-            logger.info('Connected to streamable client endpoint for session:', session.id);
+            logger.debug('Connected to streamable client endpoint for session:', session.id);
         } catch (error) {
             logger.error('Error starting streaming session:', error);
             throw error;
