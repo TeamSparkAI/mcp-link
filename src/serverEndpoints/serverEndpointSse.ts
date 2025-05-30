@@ -57,6 +57,42 @@ export class ServerEndpointSse extends ServerEndpoint {
         });
     }
 
+    private handleSessionRequest = async (req: Request, res: Response): Promise<void> => {
+        logger.debug('SSE server transport - received message', req.url, req.body);
+
+        // Extract sessionId from URL query params
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const sessionId = url.searchParams.get('sessionId');
+        
+        if (!sessionId) {
+            logger.error('No sessionId in request');
+            res.status(400).send('No sessionId provided');
+            return;
+        }
+
+        const session = this.sessionManager.getSession(sessionId);
+        if (!session) {
+            logger.error('No active session for sessionId:', sessionId);
+            res.status(400).send('No active session');
+            return;
+        }
+
+        try {
+            const message: JSONRPCMessage = {
+                jsonrpc: req.body.jsonrpc,
+                id: req.body.id,
+                method: req.body.method,
+                params: req.body.params
+            };
+
+            await session.forwardMessageToServer(message);
+            res.status(202).send('Accepted').end();
+        } catch (error) {
+            logger.error('Error handling message:', error);
+            res.status(500).send('Error handling message');
+        }
+    }
+
     async start(messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
         if (this.clientEndpoints.size === 0) {
             throw new Error('SSE server endpoint has no client endpoints configured, failed to start');
@@ -80,6 +116,9 @@ export class ServerEndpointSse extends ServerEndpoint {
             app.get('/sse', async (req: Request, res: Response) => {
                 await this.handleSseRequest(req, res, clientEndpoint, messageProcessor);
             });
+            app.post('/messages', async (req: Request, res: Response) => {
+                await this.handleSessionRequest(req, res);
+            });
         } else {
             // Multiple client endpoints case - use /:server/sse
             app.get('/:server/sse', async (req: Request, res: Response) => {
@@ -94,44 +133,10 @@ export class ServerEndpointSse extends ServerEndpoint {
 
                 await this.handleSseRequest(req, res, clientEndpoint, messageProcessor, `/${serverName}/messages`);
             });
+            app.post('/:server/messages', async (req: Request, res: Response) => {
+                await this.handleSessionRequest(req, res);
+            });
         }
-
-        // Handle incoming messages
-        app.post('/messages', async (req: Request, res: Response) => {
-            logger.debug('SSE server transport - received message', req.url, req.body);
-
-            // Extract sessionId from URL query params
-            const url = new URL(req.url, `http://${req.headers.host}`);
-            const sessionId = url.searchParams.get('sessionId');
-            
-            if (!sessionId) {
-                logger.error('No sessionId in request');
-                res.status(400).send('No sessionId provided');
-                return;
-            }
-
-            const session = this.sessionManager.getSession(sessionId);
-            if (!session) {
-                logger.error('No active session for sessionId:', sessionId);
-                res.status(400).send('No active session');
-                return;
-            }
-
-            try {
-                const message: JSONRPCMessage = {
-                    jsonrpc: req.body.jsonrpc,
-                    id: req.body.id,
-                    method: req.body.method,
-                    params: req.body.params
-                };
-
-                await session.forwardMessageToServer(message);
-                res.status(202).send('Accepted').end();
-            } catch (error) {
-                logger.error('Error handling message:', error);
-                res.status(500).send('Error handling message');
-            }
-        });
 
         this.server.listen(port, host, () => {
             logger.debug(`SSE server endpoint listening on http://${host}:${port}`);
