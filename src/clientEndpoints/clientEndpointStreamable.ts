@@ -8,6 +8,7 @@ import logger from "../logger";
 
 export class ClientEndpoiontStreamable implements ClientEndpoint {
     private endpoint: URL;
+    private headers: Record<string, string>;
     private streamableClient: StreamableHTTPClientTransport | null = null;
     private sessionManager: SessionManager;
 
@@ -16,6 +17,7 @@ export class ClientEndpoiontStreamable implements ClientEndpoint {
             throw new Error('Client endpoint is required');
         }
         this.endpoint = new URL(config.endpoint);
+        this.headers = config.endpointHeaders || {};
         this.sessionManager = sessionManager;
     }
 
@@ -23,7 +25,11 @@ export class ClientEndpoiontStreamable implements ClientEndpoint {
         try {
             // Create a new transport for this session
             logger.debug(`Connecting to Streamable client endpoint: ${this.endpoint}`);
-            this.streamableClient = new StreamableHTTPClientTransport(this.endpoint);
+            this.streamableClient = new StreamableHTTPClientTransport(this.endpoint, {
+                requestInit: {
+                    headers: this.headers
+                }
+            });
 
             this.streamableClient.onmessage = async (message: JSONRPCMessage) => {
                 logger.debug(`Received message from Streamable client endpoint: ${message}`);
