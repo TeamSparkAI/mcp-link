@@ -12,7 +12,7 @@ import logger from '../logger';
 export class StdioSession extends BaseSession<StdioServerTransport> {
     constructor(clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor) {
         const transport = new StdioServerTransport();
-        super(`stdio-${Date.now()}`, clientEndpoint, transport, 'Stdio', messageProcessor);
+        super(`stdio-${Date.now()}`, clientEndpoint, transport, 'Stdio', null, messageProcessor);
     }
 }
 

@@ -7,15 +7,15 @@ async function runBridge() {
     try {
         // Create a logging message processor as an example...
         const messageProcessor = {
-            forwardMessageToServer: async (sessionId: string, message: JSONRPCMessage) => {
+            forwardMessageToServer: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
                 logger.info('[MessageProcessor] Forwarding message to server', message);``
                 return message;
             },
-            returnMessageToClient: async (sessionId: string, message: JSONRPCMessage) => {
+            returnMessageToClient: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
                 logger.info('[MessageProcessor] Returning message to client', message);
                 return message;
             }
-        }
+        }   
 
         const config = createConfig();
         const serverEndpoint = await startBridge(config.server, config.clients, messageProcessor);

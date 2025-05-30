@@ -16,19 +16,19 @@ export class MessageProcessorWrapper implements AuthorizedMessageProcessor {
         return undefined;
     }
 
-    async forwardMessageToServer(sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage> {
+    async forwardMessageToServer(serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage> {
         if ('authorize' in this.processor) {
-            return this.processor.forwardMessageToServer(sessionId, message, authPayload);
+            return this.processor.forwardMessageToServer(serverName, sessionId, message, authPayload);
         }
         // For BaseMessageProcessor, ignore authPayload
-        return this.processor.forwardMessageToServer(sessionId, message);
+        return this.processor.forwardMessageToServer(serverName, sessionId, message);
     }
 
-    async returnMessageToClient(sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage> {
+    async returnMessageToClient(serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage> {
         if ('authorize' in this.processor) {
-            return this.processor.returnMessageToClient(sessionId, message, authPayload);
+            return this.processor.returnMessageToClient(serverName, sessionId, message, authPayload);
         }
         // For BaseMessageProcessor, ignore authPayload
-        return this.processor.returnMessageToClient(sessionId, message);
+        return this.processor.returnMessageToClient(serverName, sessionId, message);
     }
 } 

@@ -15,6 +15,7 @@ export function jsonRpcError(message: string, code: number = -32000): JSONRPCMes
 
 export interface Session {
     get id(): string;  
+    get serverName(): string | null;
 
     start(): Promise<void>;
   
@@ -37,6 +38,7 @@ export interface Session {
 
 export abstract class BaseSession<T extends Transport = Transport> extends EventEmitter {
     protected sessionId: string;
+    protected _serverName: string | null;
     protected isActive: boolean = true;
     protected clientEndpoint: ClientEndpoint;
     private _transport: T;
@@ -44,9 +46,10 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     private messageProcessor?: AuthorizedMessageProcessor;
     private authPayload?: any;
 
-    constructor(sessionId: string, clientEndpoint: ClientEndpoint, transport: T, transportType: string, messageProcessor?: AuthorizedMessageProcessor) {
+    constructor(sessionId: string, clientEndpoint: ClientEndpoint, transport: T, transportType: string, serverName: string | null, messageProcessor?: AuthorizedMessageProcessor) {
         super();
         this.sessionId = sessionId;
+        this._serverName = serverName;
         this.clientEndpoint = clientEndpoint;
         this._transport = transport;
         this.transportType = transportType;
@@ -56,6 +59,10 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
 
     get id(): string {
         return this.sessionId;
+    }
+
+    get serverName(): string | null {
+        return this._serverName;
     }
 
     get transport(): T {
@@ -83,7 +90,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         if (!this.isActive) return;
         logger.debug('[Session] Forwarding message to server (via client endpoint):', message);
         if (this.messageProcessor) {
-            message = await this.messageProcessor.forwardMessageToServer(this.sessionId, message, this.authPayload);
+            message = await this.messageProcessor.forwardMessageToServer(this.serverName, this.sessionId, message, this.authPayload);
         }
         await this.clientEndpoint.sendMessage(message);
     }
@@ -92,7 +99,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         if (!this.isActive) return;
         logger.debug('[Session] Sending response to client (via server endpoint):', message);
         if (this.messageProcessor) {
-            message = await this.messageProcessor.returnMessageToClient(this.sessionId, message, this.authPayload);
+            message = await this.messageProcessor.returnMessageToClient(this.serverName, this.sessionId, message, this.authPayload);
         }
         await this.transport.send(message);
     }

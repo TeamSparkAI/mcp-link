@@ -15,8 +15,8 @@ import logger from '../logger';
 // https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#streamable-http
 
 export class StreamableSession extends BaseSession<StreamableHTTPServerTransport> {
-    constructor(transport: StreamableHTTPServerTransport, sessionId: string, clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor) {
-        super(sessionId, clientEndpoint, transport, 'Streaming', messageProcessor);
+    constructor(transport: StreamableHTTPServerTransport, sessionId: string, clientEndpoint: ClientEndpoint, serverName: string | null, messageProcessor?: AuthorizedMessageProcessor) {
+        super(sessionId, clientEndpoint, transport, 'Streaming', serverName, messageProcessor);
     }
 }
 
@@ -27,7 +27,7 @@ export class ServerEndpointStreamable extends ServerEndpoint {
         super(config, sessionManager);
     }
 
-    private async handleStreamableRequest(req: Request, res: Response, clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
+    private async handleStreamableRequest(req: Request, res: Response, serverName: string | null, clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
         // Check for existing session ID
         const sessionId = req.headers['mcp-session-id'] as string | undefined;
         let transport: StreamableHTTPServerTransport;
@@ -69,7 +69,7 @@ export class ServerEndpointStreamable extends ServerEndpoint {
                 }
             }
 
-            const session = new StreamableSession(transport, newSessionId, clientEndpoint, messageProcessor);
+            const session = new StreamableSession(transport, newSessionId, clientEndpoint, serverName, messageProcessor);
             try {
                 await session.authorize(req.headers['authorization']);
             } catch (error) {
@@ -130,7 +130,7 @@ export class ServerEndpointStreamable extends ServerEndpoint {
             
             // Handle POST requests for client-to-server communication
             app.post('/mcp', async (req: Request, res: Response) => {
-                await this.handleStreamableRequest(req, res, clientEndpoint, messageProcessor);
+                await this.handleStreamableRequest(req, res, null, clientEndpoint, messageProcessor);
             });
 
             // Handle GET and DELETE requests
@@ -148,7 +148,7 @@ export class ServerEndpointStreamable extends ServerEndpoint {
                     return;
                 }
 
-                await this.handleStreamableRequest(req, res, clientEndpoint, messageProcessor);
+                await this.handleStreamableRequest(req, res, serverName, clientEndpoint, messageProcessor);
             });
 
             // Handle GET and DELETE requests for multiple clients

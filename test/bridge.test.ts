@@ -490,14 +490,14 @@ describe('MCP Link', () => {
         let returnMessageCalled = false;
 
         const messageProcessor: MessageProcessor = {
-            forwardMessageToServer: async (sessionId: string, message: JSONRPCMessage) => {
+            forwardMessageToServer: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
                 console.log('[MessageProcessor] Forwarding message to server', sessionId, message);
                 if ('method' in message && message.jsonrpc === '2.0' && message.method === 'tools/call' && message.params?.name === 'echo' && (message.params?.arguments as { message: string })?.message === 'Hello, World!') {
                     forwardMessageCalled = true;
                 }
                 return message;
             },
-            returnMessageToClient: async (sessionId: string, message: JSONRPCMessage) => {
+            returnMessageToClient: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
                 console.log('[MessageProcessor] Returning message to client', sessionId, message);
                 if ('result' in message && message.jsonrpc === '2.0' && (message.result?.content as any[])?.[0]?.type === 'text' && (message.result?.content as any[])?.[0]?.text === 'Echo: Hello, World!') {
                     returnMessageCalled = true;
@@ -560,15 +560,17 @@ describe('MCP Link', () => {
                 console.log('[MessageProcessor] Authorizing client', authHeader);
                 return authUser;
             },
-            forwardMessageToServer: async (sessionId: string, message: JSONRPCMessage, authPayload: any) => {
+            forwardMessageToServer: async (serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any) => {
                 console.log('[MessageProcessor] Forwarding message to server', sessionId, message);
+                expect(serverName).toBeNull();
                 expect(authPayload).toEqual(authUser);
                 if ('method' in message && message.jsonrpc === '2.0' && message.method === 'tools/call' && message.params?.name === 'echo' && (message.params?.arguments as { message: string })?.message === 'Hello, World!') {
                     forwardMessageCalled = true;
                 }
                 return message;
             },
-            returnMessageToClient: async (sessionId: string, message: JSONRPCMessage, authPayload: any) => {
+            returnMessageToClient: async (serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any) => {
+                expect(serverName).toBeNull();
                 expect(authPayload).toEqual(authUser);
                 console.log('[MessageProcessor] Returning message to client', sessionId, message);
                 if ('result' in message && message.jsonrpc === '2.0' && (message.result?.content as any[])?.[0]?.type === 'text' && (message.result?.content as any[])?.[0]?.text === 'Echo: Hello, World!') {
@@ -648,6 +650,95 @@ describe('MCP Link', () => {
             console.log('Got reverse result:', resultTest.content);
             expect(resultTest.content).toBeDefined();
             expect(resultTest.content?.[0]).toEqual({ type: 'text', text: 'Reversed: olleH' });
+        });
+
+        afterAll(async () => {
+            console.log('Cleaning up...');
+            await clientEverything.close();
+            await clientTest.close();
+            await sleep(clientCloseWaitMs);
+            await bridge.stop(false);
+            console.log('Cleanup complete');
+        });
+    });
+
+    describe('streamable->stdio with multiple client endpoints with filtering', () => {
+        const clientEverything = getTestClient();
+        const clientTest = getTestClient();
+        let transportEverything: Transport;
+        let transportTest: Transport;
+        let bridge: ServerEndpoint;
+        const testPort = getTestPort();
+
+        const serverEndpoint: ServerEndpointConfig = {
+            mode: 'streamable',
+            port: testPort,
+        }
+
+        const clientEndpointEverything: ClientEndpointConfig = {
+            name: 'everything',
+            mode: 'stdio',
+            command: 'node',
+            args: [serverEverythingPath],
+        }
+
+        const clientEndpointTest: ClientEndpointConfig = {
+            name: 'test',
+            mode: 'stdio',
+            command: 'tsx',
+            args: [testServerPath],
+        }
+
+        let forwardMessageEverythingCalled = false;
+        let forwardMessageTestCalled = false;
+        let returnMessageEverythingCalled = false;
+        let returnMessageTestCalled = false;
+        
+        const messageProcessor: MessageProcessor = {
+            forwardMessageToServer: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
+                expect(serverName).toBeDefined();
+                console.log('[MessageProcessor] Forwarding message to server', sessionId, message);
+                if (serverName === clientEndpointEverything.name) {
+                    forwardMessageEverythingCalled = true;
+                } else if (serverName === clientEndpointTest.name) {
+                    forwardMessageTestCalled = true;
+                }
+                return message;
+            },
+            returnMessageToClient: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
+                expect(serverName).toBeDefined();
+                console.log('[MessageProcessor] Returning message to client', sessionId, message);
+                if (serverName === clientEndpointEverything.name) { 
+                    returnMessageEverythingCalled = true;
+                } else if (serverName === clientEndpointTest.name) {
+                    returnMessageTestCalled = true;
+                }
+                return message;
+            }
+        }
+
+        beforeAll(async () => {
+            bridge = await startBridge(serverEndpoint, [clientEndpointEverything, clientEndpointTest], messageProcessor);
+            await sleep(serverStartWaitMs); // Wait for the bridge to be ready to accept connections
+            transportEverything = new StreamableHTTPClientTransport(new URL('http://localhost:' + testPort + '/' + clientEndpointEverything.name + '/mcp'));
+            transportTest = new StreamableHTTPClientTransport(new URL('http://localhost:' + testPort + '/' + clientEndpointTest.name + '/mcp'));
+        });
+
+        it('should successfully execute echo command', async () => {    
+            await clientEverything.connect(transportEverything);
+            const result = await clientEverything.callTool({name: 'echo', arguments: { message: 'Hello, World!' }}) as CallToolResult;
+            console.log('Got echo result:', result.content);
+            expect(result.content).toBeDefined();
+            expect(result.content?.[0]).toEqual({ type: 'text', text: 'Echo: Hello, World!' });
+            await clientTest.connect(transportTest);
+            const resultTest = await clientTest.callTool({name: 'reverse', arguments: { message: 'Hello' }}) as CallToolResult;
+            console.log('Got reverse result:', resultTest.content);
+            expect(resultTest.content).toBeDefined();
+            expect(resultTest.content?.[0]).toEqual({ type: 'text', text: 'Reversed: olleH' });
+            expect(forwardMessageEverythingCalled).toBe(true);
+            expect(forwardMessageTestCalled).toBe(true);
+            expect(returnMessageEverythingCalled).toBe(true);
+            expect(returnMessageTestCalled).toBe(true);
         });
 
         afterAll(async () => {

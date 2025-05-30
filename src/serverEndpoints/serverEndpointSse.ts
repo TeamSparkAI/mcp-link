@@ -13,8 +13,8 @@ import logger from '../logger';
 
 // Session class to manage SSE transport and message handling
 export class SseSession extends BaseSession<SSEServerTransport> {
-    constructor(transport: SSEServerTransport, clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor) {
-        super(transport.sessionId || '', clientEndpoint, transport, 'SSE', messageProcessor);
+    constructor(transport: SSEServerTransport, clientEndpoint: ClientEndpoint, serverName: string | null, messageProcessor?: AuthorizedMessageProcessor) {
+        super(transport.sessionId || '', clientEndpoint, transport, 'SSE', serverName, messageProcessor);
     }
 }
 
@@ -25,11 +25,11 @@ export class ServerEndpointSse extends ServerEndpoint {
         super(config, sessionManager);
     }
 
-    private async handleSseRequest(req: Request, res: Response, clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor, messagesPath: string = '/messages'): Promise<void> {
+    private async handleSseRequest(req: Request, res: Response, serverName: string | null, clientEndpoint: ClientEndpoint, messageProcessor?: AuthorizedMessageProcessor, messagesPath: string = '/messages'): Promise<void> {
         const transport = new SSEServerTransport(messagesPath, res);
         logger.debug('Received SSE request, created new session:', transport.sessionId);
         
-        const session = new SseSession(transport, clientEndpoint, messageProcessor);
+        const session = new SseSession(transport, clientEndpoint, serverName, messageProcessor);
         try {
             await session.authorize(req.headers['authorization']);
         } catch (error) {
@@ -57,7 +57,7 @@ export class ServerEndpointSse extends ServerEndpoint {
         });
     }
 
-    private handleSessionRequest = async (req: Request, res: Response): Promise<void> => {
+    private handleSessionRequest = async (req: Request, res: Response, serverName: string | null): Promise<void> => {
         logger.debug('SSE server transport - received message', req.url, req.body);
 
         // Extract sessionId from URL query params
@@ -74,6 +74,12 @@ export class ServerEndpointSse extends ServerEndpoint {
         if (!session) {
             logger.error('No active session for sessionId:', sessionId);
             res.status(400).send('No active session');
+            return;
+        }
+
+        if (session.serverName !== serverName) {
+            logger.error('Session server name does not match request server name:', session.serverName, serverName);
+            res.status(400).send('Session server name does not match request server name');
             return;
         }
 
@@ -114,10 +120,10 @@ export class ServerEndpointSse extends ServerEndpoint {
             // Single client endpoint case - use /sse
             const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT)!;
             app.get('/sse', async (req: Request, res: Response) => {
-                await this.handleSseRequest(req, res, clientEndpoint, messageProcessor);
+                await this.handleSseRequest(req, res, null, clientEndpoint, messageProcessor);
             });
             app.post('/messages', async (req: Request, res: Response) => {
-                await this.handleSessionRequest(req, res);
+                await this.handleSessionRequest(req, res, null);
             });
         } else {
             // Multiple client endpoints case - use /:server/sse
@@ -131,10 +137,19 @@ export class ServerEndpointSse extends ServerEndpoint {
                     return;
                 }
 
-                await this.handleSseRequest(req, res, clientEndpoint, messageProcessor, `/${serverName}/messages`);
+                await this.handleSseRequest(req, res, serverName, clientEndpoint, messageProcessor, `/${serverName}/messages`);
             });
             app.post('/:server/messages', async (req: Request, res: Response) => {
-                await this.handleSessionRequest(req, res);
+                const serverName = req.params.server;
+                const clientEndpoint = this.clientEndpoints.get(serverName);
+                
+                if (!clientEndpoint) {
+                    logger.error(`No client endpoint found for server: ${serverName}`);
+                    res.status(404).json(jsonRpcError(`Server ${serverName} not found`));
+                    return;
+                }
+
+                await this.handleSessionRequest(req, res, serverName);
             });
         }
 
