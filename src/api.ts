@@ -1,4 +1,3 @@
-
 import { createClientEndpoint } from "./clientEndpoints/clientEndpointFactory";
 import { ServerEndpoint } from "./serverEndpoints/serverEndpoint";
 import { createServerEndpoint } from "./serverEndpoints/serverEndpointFactory";
@@ -7,6 +6,8 @@ import { ClientEndpointConfig, ServerEndpointConfig } from "./types/config";
 import logger from "./logger";
 import { MessageProcessor } from "./types/messageProcessor";
 import { MessageProcessorWrapper } from "./messageProcessorWrapper";
+
+export { ServerEndpoint };
 
 export async function startBridge(server: ServerEndpointConfig, clients: ClientEndpointConfig[], messageProcessor?: MessageProcessor) : Promise<ServerEndpoint> {
     logger.debug('Starting bridge in mode:', server.mode);
