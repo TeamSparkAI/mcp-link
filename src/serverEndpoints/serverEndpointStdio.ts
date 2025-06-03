@@ -2,11 +2,12 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
 import { BaseSession } from './session';
 import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
-import { ServerEndpointConfig } from '../types/config';
+import { ClientEndpointConfig, ServerEndpointConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
 import { ServerEndpoint } from './serverEndpoint';
 import { AuthorizedMessageProcessor, MessageProcessor } from '../types/messageProcessor';
 import logger from '../logger';
+import { createClientEndpoint } from '../clientEndpoints/clientEndpointFactory';
 
 // Session class to manage stdio transport and message handling
 export class StdioSession extends BaseSession<StdioServerTransport> {
@@ -21,7 +22,7 @@ export class ServerEndpointStdio extends ServerEndpoint {
         super(config, sessionManager);
     }
 
-    async addClientEndpoint(name: string, clientEndpoint: ClientEndpoint): Promise<void> {
+    async addClientEndpoint(name: string, clientEndpoint: ClientEndpointConfig): Promise<void> {
         if (name === this.ONLY_CLIENT_ENDPOINT) {
             super.addClientEndpoint(name, clientEndpoint);
         } else {

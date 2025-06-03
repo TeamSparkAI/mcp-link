@@ -1,8 +1,9 @@
 import { ClientEndpoint } from "../clientEndpoints/clientEndpoint";
-import { ServerEndpointConfig } from "../types/config";
+import { ClientEndpointConfig, ServerEndpointConfig } from "../types/config";
 import { SessionManagerImpl } from "./sessionManager";
 import logger, { setLogLevel } from "../logger";
 import { AuthorizedMessageProcessor, MessageProcessor } from "../types/messageProcessor";
+import { createClientEndpoint } from "../clientEndpoints/clientEndpointFactory";
 
 
 export abstract class ServerEndpoint {
@@ -16,9 +17,9 @@ export abstract class ServerEndpoint {
         setLogLevel(config.logLevel || 'info');
     }
 
-    async addClientEndpoint(name: string, clientEndpoint: ClientEndpoint): Promise<void> {
+    async addClientEndpoint(name: string, clientEndpoint: ClientEndpointConfig): Promise<void> {
         logger.info(`Adding client endpoint ${name}`);
-        this.clientEndpoints.set(name, clientEndpoint);
+        this.clientEndpoints.set(name, createClientEndpoint(clientEndpoint, this.sessionManager));
     }
 
     async removeClientEndpoint(name: string): Promise<void> {
@@ -34,7 +35,7 @@ export abstract class ServerEndpoint {
         this.clientEndpoints.delete(name);
     }
 
-    async setClientEndpoint(clientEndpoint: ClientEndpoint): Promise<void> {
+    async setClientEndpoint(clientEndpoint: ClientEndpointConfig): Promise<void> {
         this.addClientEndpoint(this.ONLY_CLIENT_ENDPOINT, clientEndpoint);
     }
 
