@@ -17,7 +17,21 @@ export abstract class ServerEndpoint {
     }
 
     async addClientEndpoint(name: string, clientEndpoint: ClientEndpoint): Promise<void> {
+        logger.info(`Adding client endpoint ${name}`);
         this.clientEndpoints.set(name, clientEndpoint);
+    }
+
+    async removeClientEndpoint(name: string): Promise<void> {
+        logger.info(`Removing client endpoint ${name}`);
+        // Find, close, and remove all sessions for this client endpoint
+        const sessions = this.sessionManager.getSessions();
+        for (const session of sessions) {
+            if (session.serverName === name) {
+                await session.close();
+                this.sessionManager.removeSession(session.id);
+            }
+        }
+        this.clientEndpoints.delete(name);
     }
 
     async setClientEndpoint(clientEndpoint: ClientEndpoint): Promise<void> {
@@ -37,8 +51,6 @@ export abstract class ServerEndpoint {
                 return session.close();
             }));
             logger.debug('Terminate process:', terminateProcess);
-            // We wait for async shutdown of the client endpoints
-            //await new Promise(resolve => setTimeout(resolve, 1000));
             if (terminateProcess) {
                 logger.debug('Terminating process');
                 process.exit(0);

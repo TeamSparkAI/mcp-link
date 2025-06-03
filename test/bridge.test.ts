@@ -226,7 +226,7 @@ describe('MCP Link', () => {
             await client.close(); // This SIGTERMs the stdio target (our app) but doesn't wait for it to exit, and we do an async shutdown of the container
             await sleep(containerClientCloseWaitMs);
             console.log('Cleanup complete');
-        });
+        }, 60000);
     });
 
     describe('sse->stdio', () => {
@@ -346,7 +346,7 @@ describe('MCP Link', () => {
             await sleep(containerClientCloseWaitMs);
             await terminateServer("server", server);
             console.log('Cleanup complete');
-        });
+        }, 60000);
     });
 
     describe('streamable->stdio', () => {
@@ -466,7 +466,7 @@ describe('MCP Link', () => {
             await sleep(containerClientCloseWaitMs);
             await terminateServer("server", server);
             console.log('Cleanup complete');
-        });
+        }, 60000);
     });
 
     describe('streamable->stdio with filtering', () => {

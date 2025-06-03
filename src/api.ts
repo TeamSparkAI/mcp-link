@@ -16,12 +16,10 @@ export async function startBridge(server: ServerEndpointConfig, clients: ClientE
 
     const serverEndpoint = createServerEndpoint(server, sessionManager);
 
-    if (clients.length == 0) {
-        throw new Error('No clients configured');
-    } else if (clients.length == 1 && !clients[0].name) {
+    if (clients.length == 1 && !clients[0].name) {
         const clientEndpoint = createClientEndpoint(clients[0], sessionManager);
         serverEndpoint.setClientEndpoint(clientEndpoint);
-    } else {
+    } else if (clients.length > 0) {
         for (const client of clients) {
             if (!client.name) {
                 throw new Error('Client name is required for multiple clients');

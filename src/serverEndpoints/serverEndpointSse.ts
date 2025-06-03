@@ -100,18 +100,13 @@ export class ServerEndpointSse extends ServerEndpoint {
     }
 
     async start(messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
-        if (this.clientEndpoints.size === 0) {
-            throw new Error('SSE server endpoint has no client endpoints configured, failed to start');
-        }
-
         const port = this.config.port || 3000;
         const host = this.config.host || 'localhost';
 
-        logger.info(`Starting SSE server transport on port ${port}`);
+        logger.info(`Starting SSE server transport on port ${port}, preconfigured client endpoints: ${this.clientEndpoints.size}`);
 
         const app = express();
         this.server = createServer(app);
-
         app.use(cors());
         app.use(express.json());
 
