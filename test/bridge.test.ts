@@ -555,9 +555,13 @@ describe('MCP Link', () => {
             email: 'test@test.com',
         }
 
+        let authorizeCalled = false;
+
         const messageProcessor: AuthorizedMessageProcessor = {
-            authorize: async (authHeader: string): Promise<any> => {
+            authorize: async (serverName: string | null, authHeader: string): Promise<any> => {
+                authorizeCalled = true;
                 console.log('[MessageProcessor] Authorizing client', authHeader);
+                expect(serverName).toBeNull();
                 return authUser;
             },
             forwardMessageToServer: async (serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any) => {
@@ -578,7 +582,7 @@ describe('MCP Link', () => {
                 }
                 return message;
             }
-        }
+        };
         
         beforeAll(async () => {
             bridge = await startBridge(serverEndpoint, [clientEndpoint], messageProcessor);
@@ -588,6 +592,7 @@ describe('MCP Link', () => {
 
         it('should successfully execute echo command', async () => {    
             await client.connect(transport);
+            expect(authorizeCalled).toBe(true);
             const result = await client.callTool({name: 'echo', arguments: { message: 'Hello, World!' }}) as CallToolResult;
             console.log('Got result:', result.content);
             expect(result.content).toBeDefined();
@@ -746,6 +751,98 @@ describe('MCP Link', () => {
             await clientEverything.close();
             await clientTest.close();
             await sleep(clientCloseWaitMs);
+            await bridge.stop(false);
+            console.log('Cleanup complete');
+        });
+    });
+
+    describe('stdio->stdio-test-stderr', () => {
+        let transport: Transport;
+        const client = getTestClient();
+        
+        beforeAll(async () => {
+            transport = getBridgeStdioTransport(['--serverMode=stdio', '--clientMode=stdio', '--command=npx', 'bad-package-name-xxx']);
+        });
+
+        it('should fail to start', async () => {
+            console.log('Connecting to transport');
+            try {
+                await client.connect(transport);
+            } catch (error) {
+                expect(error).toBeDefined();
+                expect((error as Error).message).toContain('MCP error -32000: Server closed');
+                expect((error as any).code).toBe(-32000);
+                return;
+            }
+            fail('Expected error to be thrown');
+        });
+
+        afterAll(async () => {
+            console.log('Cleaning up...');
+            await client.close();
+            await sleep(clientCloseWaitMs);
+            console.log('Cleanup complete');
+        });
+    });
+
+    describe('bridge stdio start failures with stderr', () => {
+        let bridge: ServerEndpoint;
+        const testPort = getTestPort();
+        const clientTest = getTestClient();
+        let transportTest: Transport;
+
+        const serverEndpoint: ServerEndpointConfig = {
+            mode: 'streamable',
+            port: testPort,
+        }
+
+        const clientEndpointEverything: ClientEndpointConfig = {
+            name: 'everything',
+            mode: 'stdio',
+            command: 'node',
+            args: [serverEverythingPath],
+        }
+
+        const clientEndpointTest: ClientEndpointConfig = {
+            name: 'test',
+            mode: 'stdio',
+            command: 'npx',
+            args: ['bad-package-reference-xxx'],
+        }
+
+        const messageProcessor: MessageProcessor = {
+            forwardMessageToServer: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
+                console.log('Forwarding message to server', serverName, sessionId, message);
+                return message;
+            },
+            returnMessageToClient: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
+                console.log('Returning message to client', serverName, sessionId, message);
+                return message;
+            }
+        }
+
+        beforeAll(async () => {
+            bridge = await startBridge(serverEndpoint, [clientEndpointEverything, clientEndpointTest], messageProcessor);
+            await sleep(serverStartWaitMs); // Wait for the bridge to be ready to accept connections
+            transportTest = new StreamableHTTPClientTransport(new URL('http://localhost:' + testPort + '/' + clientEndpointTest.name + '/mcp'));
+            //transportTest = new SSEClientTransport(new URL('http://localhost:' + testPort + '/' + clientEndpointTest.name + '/sse'));
+        });
+
+        it('should detect failed startup and provide stderr', async () => {
+            try {   
+                console.log('Connecting to transport');
+                await clientTest.connect(transportTest);
+            } catch (error) {
+                expect(error).toBeDefined();
+                expect((error as Error).message).toContain('MCP error -32000: Server closed');
+                expect(bridge.getClientEndpoint(clientEndpointTest.name!)!.getLogEvents().map(e => e.message).join('\n')).toContain('npm error 404 Not Found');
+                return;
+            }
+            fail('Expected error to be thrown');
+        });
+
+        afterAll(async () => {
+            console.log('Cleaning up...');
             await bridge.stop(false);
             console.log('Cleanup complete');
         });

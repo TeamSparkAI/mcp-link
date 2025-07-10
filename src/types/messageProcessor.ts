@@ -6,7 +6,7 @@ export interface BaseMessageProcessor {
 }
 
 export interface AuthorizedMessageProcessor {
-    authorize(authHeader: string | undefined): Promise<any>;
+    authorize(serverName: string | null, authHeader: string | null): Promise<any>;
     forwardMessageToServer(serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage>;
     returnMessageToClient(serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage>;
 }

@@ -6,19 +6,18 @@ import { ClientEndpointConfig } from "../types/config";
 import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
-export class ClientEndpoiontStreamable implements ClientEndpoint {
+export class ClientEndpoiontStreamable extends ClientEndpoint {
     private endpoint: URL;
     private headers: Record<string, string>;
     private streamableClient: StreamableHTTPClientTransport | null = null;
-    private sessionManager: SessionManager;
-
+  
     constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
+        super(config, sessionManager);
         if (!config.endpoint) {
             throw new Error('Client endpoint is required');
         }
         this.endpoint = new URL(config.endpoint);
         this.headers = config.endpointHeaders || {};
-        this.sessionManager = sessionManager;
     }
 
     async startSession(session: Session): Promise<void> {

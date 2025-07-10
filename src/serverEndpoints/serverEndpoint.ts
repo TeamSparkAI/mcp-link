@@ -39,6 +39,14 @@ export abstract class ServerEndpoint {
         this.addClientEndpoint(this.ONLY_CLIENT_ENDPOINT, clientEndpoint);
     }
 
+    getClientEndpoint(name: string): ClientEndpoint | undefined {
+        return this.clientEndpoints.get(name);
+    }
+
+    getClientEndpoints(): Map<string, ClientEndpoint> {
+        return this.clientEndpoints;
+    }
+
     abstract start(messageProcessor?: AuthorizedMessageProcessor): Promise<void>;
 
     async stop(terminateProcess: boolean = true): Promise<void> {

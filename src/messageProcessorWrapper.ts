@@ -8,9 +8,9 @@ export class MessageProcessorWrapper implements AuthorizedMessageProcessor {
         this.processor = processor;
     }
 
-    async authorize(authHeader: string | undefined): Promise<any> {
+    async authorize(serverName: string | null, authHeader: string): Promise<any> {
         if ('authorize' in this.processor) {
-            return this.processor.authorize(authHeader);
+            return this.processor.authorize(serverName, authHeader);
         }
         // For BaseMessageProcessor, return undefined as auth payload
         return undefined;
@@ -31,4 +31,4 @@ export class MessageProcessorWrapper implements AuthorizedMessageProcessor {
         // For BaseMessageProcessor, ignore authPayload
         return this.processor.returnMessageToClient(serverName, sessionId, message);
     }
-} 
+}

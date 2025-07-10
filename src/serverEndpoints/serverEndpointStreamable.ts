@@ -58,12 +58,12 @@ export class ServerEndpointStreamable extends ServerEndpoint {
             });
     
             // Clean up transport when closed
-            transport.onclose = () => {
-                logger.debug('transport.onclose', transport.sessionId);
+            transport.onclose = async () => {
+                logger.info('Streamable connection closed for session ID:', transport.sessionId);
                 if (transport.sessionId) {
                     const session = this.sessionManager.getSession(transport.sessionId);
                     if (session) {
-                        session.close();
+                        await session.close();
                         this.sessionManager.removeSession(transport.sessionId);
                     }
                 }
@@ -71,10 +71,10 @@ export class ServerEndpointStreamable extends ServerEndpoint {
 
             const session = new StreamableSession(transport, newSessionId, clientEndpoint, serverName, messageProcessor);
             try {
-                await session.authorize(req.headers['authorization']);
+                await session.authorize(req.headers['authorization'] || null);
             } catch (error) {
                 logger.error('Error authorizing session:', error);
-                res.status(401).json(jsonRpcError('Unauthorized'));
+                res.status(401).json(jsonRpcError('Unauthorized: ' + error));
                 return;
             }
 

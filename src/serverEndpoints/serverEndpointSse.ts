@@ -31,10 +31,10 @@ export class ServerEndpointSse extends ServerEndpoint {
         
         const session = new SseSession(transport, clientEndpoint, serverName, messageProcessor);
         try {
-            await session.authorize(req.headers['authorization']);
+            await session.authorize(req.headers['authorization'] || null);
         } catch (error) {
             logger.error('Error authorizing session:', error);
-            res.status(401).json(jsonRpcError('Unauthorized'));
+            res.status(401).json(jsonRpcError('Unauthorized: ' + error));
             return;
         }
 
@@ -47,11 +47,11 @@ export class ServerEndpointSse extends ServerEndpoint {
         await session.start();
 
         // Session close handler
-        req.on('close', () => {
-            logger.debug('SSE connection closed for session:', transport.sessionId);
+        req.on('close', async () => {
+            logger.debug('SSE connection closed for session ID:', transport.sessionId);
             const session = this.sessionManager.getSession(transport.sessionId!);
             if (session) {
-                session.close();
+                await session.close();
                 this.sessionManager.removeSession(session.id);
             }
         });

@@ -6,14 +6,13 @@ import { ClientEndpointConfig } from "../types/config";
 import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
-export class ClientEndpointSse implements ClientEndpoint {
+export class ClientEndpointSse extends ClientEndpoint {
     private endpoint: URL;
     private headers: Record<string, string>;
     private sseClient: SSEClientTransport | null = null;
-    private sessionManager: SessionManager;
-    
+  
     constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
-        this.sessionManager = sessionManager;
+        super(config, sessionManager);
         if (!config.endpoint) {
             throw new Error('Client endpoint is required');
         }

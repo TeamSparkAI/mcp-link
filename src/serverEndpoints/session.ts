@@ -5,10 +5,10 @@ import { EventEmitter } from 'events';
 import logger from '../logger';
 import { AuthorizedMessageProcessor, MessageProcessor } from "../types/messageProcessor";
 
-export function jsonRpcError(message: string, code: number = -32000): JSONRPCMessage {
+export function jsonRpcError(message: string, { id, code = -32000 }: { id?: number, code?: number } = {} ): JSONRPCMessage {
     return {
         jsonrpc: '2.0',
-        id: 'error',
+        id: id ?? "error",
         error: { code, message }
     };
 }
@@ -80,9 +80,9 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         }
     }
 
-    async authorize(authHeader: string | undefined): Promise<any> {
+    async authorize(authHeader: string | null): Promise<any> {
         if (this.messageProcessor) {
-            this.authPayload = await this.messageProcessor.authorize(authHeader);
+            this.authPayload = await this.messageProcessor.authorize(this.serverName, authHeader);
         }
     }
 
@@ -107,10 +107,12 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     async close(): Promise<void> {
         if (!this.isActive) return;
         this.isActive = false;
-        logger.debug('Closing transport and session:', this.sessionId);
+
         // Close our transport first to prevent any more messages from being sent
+        logger.debug('Closing transport for session ID:', this.sessionId);
         await this.transport.close();
         // Then close the client endpoint
+        logger.debug('Closing session for client endpoint');
         await this.clientEndpoint.closeSession();
     }
 

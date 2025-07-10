@@ -5,21 +5,21 @@ import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ReadBuffer, serializeMessage } from "@modelcontextprotocol/sdk/shared/stdio";
 import { PassThrough } from 'stream';
 import { ClientEndpointConfig } from "../types/config";
-import { SessionManager } from '../serverEndpoints/sessionManager';
+import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
 const docker = new Docker();
 
-export class ClientEndpointStdioContainer implements ClientEndpoint {
+export class ClientEndpointStdioContainer extends ClientEndpoint {
     private image: string;
     private volumes: string[];
     private env: Record<string, string>;
     private args: string[];
     private container: Container | null = null;
     private stdinStream: NodeJS.ReadWriteStream | null = null;
-    private sessionManager: SessionManager;
   
     constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
+        super(config, sessionManager);
         if (!config.containerImage) {
             throw new Error('Client container image is required');
         }
@@ -27,7 +27,6 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
         this.volumes = config.containerVolumes || [];
         this.env = config.env || {};
         this.args = config.args || [];
-        this.sessionManager = sessionManager;
         this.monitorContainerStop();
     }
 
@@ -150,6 +149,16 @@ export class ClientEndpointStdioContainer implements ClientEndpoint {
         
             logger.debug('[initializeContainer] Setting up message handling');
             this.setupMessageHandling(stdout, session);
+
+            if (stderr) {
+                logger.debug('[mcp-link-container] Setting up stderr logging');
+                stderr.on('data', (data: Buffer) => {
+                    const logEntry = data.toString().trim();
+                    logger.error('[mcp-link-container] stderr:', logEntry);
+                    this.logEvent(logEntry);
+                });
+            }
+
             logger.debug('Container initialized and ready');
             return { container, stdin: stream };
         } catch (error) {
