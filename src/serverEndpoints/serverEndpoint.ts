@@ -10,6 +10,9 @@ export abstract class ServerEndpoint {
     protected readonly ONLY_CLIENT_ENDPOINT = "ONLY_CLIENT_ENDPOINT";
     protected clientEndpoints: Map<string, ClientEndpoint> = new Map();
     
+    // Abstract type field that each derived class must implement
+    public abstract readonly type: 'stdio' | 'sse' | 'streamable';
+    
     constructor(
         protected config: ServerEndpointConfig, 
         protected sessionManager: SessionManagerImpl
@@ -50,7 +53,7 @@ export abstract class ServerEndpoint {
     abstract start(messageProcessor?: AuthorizedMessageProcessor): Promise<void>;
 
     async stop(terminateProcess: boolean = true): Promise<void> {
-        logger.info(`Stopping ${this.constructor.name} transport`);
+        logger.info(`Stopping ${this.type} transport`);
         try {
             // Close all sessions (which will close their client endpoints)
             const sessions = this.sessionManager.getSessions();

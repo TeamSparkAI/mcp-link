@@ -8,6 +8,11 @@ import { ChildProcess, spawn } from 'child_process';
 import { join } from 'path';
 import { AuthorizedMessageProcessor, ClientEndpointConfig, MessageProcessor, ServerEndpointConfig, startBridge } from '../src/api';
 import { ServerEndpoint } from '../src/serverEndpoints/serverEndpoint';
+import { ServerEndpointStreamable } from '../src/serverEndpoints/serverEndpointStreamable';
+import { ServerEndpointHttpBase } from '../src/serverEndpoints/serverEndpointHttpBase';
+import { SessionManagerImpl } from '../src/serverEndpoints/sessionManager';
+import { ServerEndpointStdio } from '../src/serverEndpoints/serverEndpointStdio';
+import { ServerEndpointSse } from '../src/serverEndpoints/serverEndpointSse';
 
 // Note: All server/client mode permutations are tested in this file.
 
@@ -839,6 +844,40 @@ describe('MCP Link', () => {
                 return;
             }
             fail('Expected error to be thrown');
+        });
+
+        afterAll(async () => {
+            console.log('Cleaning up...');
+            await bridge.stop(false);
+            console.log('Cleanup complete');
+        });
+    });
+
+    describe('bridge streamable server on port 0', () => {
+        let bridge: ServerEndpoint;
+        let transportTest: Transport;
+
+        const serverEndpoint: ServerEndpointConfig = {
+            mode: 'streamable',
+            port: 0,
+        }
+
+        const clientEndpointEverything: ClientEndpointConfig = {
+            name: 'everything',
+            mode: 'stdio',
+            command: 'node',
+            args: [serverEverythingPath],
+        }
+
+        beforeAll(async () => {
+            bridge = await startBridge(serverEndpoint, [clientEndpointEverything]);
+            await sleep(serverStartWaitMs); // Wait for the bridge to be ready to accept connections
+        });
+
+        it('should record acxtual port', async () => {
+            expect(bridge.type).toBe('streamable');
+            expect((bridge as any).port).toBeDefined();
+            expect((bridge as any).port).toBeGreaterThan(0);
         });
 
         afterAll(async () => {

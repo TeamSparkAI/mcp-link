@@ -7,7 +7,7 @@ import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { BaseSession, jsonRpcError } from './session';
 import { ServerEndpointConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
-import { ServerEndpoint } from './serverEndpoint';
+import { ServerEndpointHttpBase } from './serverEndpointHttpBase';
 import { AuthorizedMessageProcessor, MessageProcessor } from '../types/messageProcessor';
 import logger from '../logger';
 
@@ -18,8 +18,8 @@ export class SseSession extends BaseSession<SSEServerTransport> {
     }
 }
 
-export class ServerEndpointSse extends ServerEndpoint {
-    private server?: ReturnType<typeof createServer>;
+export class ServerEndpointSse extends ServerEndpointHttpBase {
+    public readonly type = 'sse' as const;
 
     constructor(config: ServerEndpointConfig, sessionManager: SessionManagerImpl) {
         super(config, sessionManager);
@@ -99,17 +99,7 @@ export class ServerEndpointSse extends ServerEndpoint {
         }
     }
 
-    async start(messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
-        const port = this.config.port || 3000;
-        const host = this.config.host || 'localhost';
-
-        logger.info(`Starting SSE server transport on port ${port}, preconfigured client endpoints: ${this.clientEndpoints.size}`);
-
-        const app = express();
-        this.server = createServer(app);
-        app.use(cors());
-        app.use(express.json());
-
+    protected async startAppRoutes(app: express.Application, messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
         // Handle SSE endpoint based on client endpoint configuration
         if (this.clientEndpoints.size === 1 && this.clientEndpoints.has(this.ONLY_CLIENT_ENDPOINT)) {
             // Single client endpoint case - use /sse
@@ -147,22 +137,5 @@ export class ServerEndpointSse extends ServerEndpoint {
                 await this.handleSessionRequest(req, res, serverName);
             });
         }
-
-        this.server.listen(port, host, () => {
-            logger.debug(`SSE server endpoint listening on http://${host}:${port}`);
-        });
-    }
-
-    async stop(terminateProcess: boolean = true): Promise<void> {
-        if (this.server) {
-            logger.debug('Shutting down SSE server endpoint');
-            await new Promise<void>((resolve) => {
-                this.server!.close(() => {
-                    logger.debug('SSE server endpoint shut down successfully');
-                    resolve();
-                });
-            });
-        }
-        await super.stop(terminateProcess);
     }
 }

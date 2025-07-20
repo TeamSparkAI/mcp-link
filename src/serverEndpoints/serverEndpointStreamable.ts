@@ -7,7 +7,7 @@ import { BaseSession, jsonRpcError } from './session';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types';
 import { ServerEndpointConfig } from '../types/config';
 import { SessionManagerImpl } from './sessionManager';
-import { ServerEndpoint } from './serverEndpoint';
+import { ServerEndpointHttpBase } from './serverEndpointHttpBase';
 import { AuthorizedMessageProcessor } from '../types/messageProcessor';
 import logger from '../logger';
 
@@ -20,8 +20,8 @@ export class StreamableSession extends BaseSession<StreamableHTTPServerTransport
     }
 }
 
-export class ServerEndpointStreamable extends ServerEndpoint {
-    private server?: ReturnType<typeof createServer>;
+export class ServerEndpointStreamable extends ServerEndpointHttpBase {
+    readonly type = 'streamable' as const;
 
     constructor(config: ServerEndpointConfig, sessionManager: SessionManagerImpl) {
         super(config, sessionManager);
@@ -108,17 +108,7 @@ export class ServerEndpointStreamable extends ServerEndpoint {
         await session.transport.handleRequest(req, res);
     }
 
-    async start(messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
-        const port = this.config.port || 3000;
-        const host = this.config.host || 'localhost';
-
-        logger.info(`Starting streamable server transport on port ${port}, preconfigured client endpoints: ${this.clientEndpoints.size}`);
-
-        const app = express();
-        this.server = createServer(app);
-        app.use(cors());
-        app.use(express.json());
-
+    protected async startAppRoutes(app: express.Application, messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
         if (this.clientEndpoints.size === 1 && this.clientEndpoints.has(this.ONLY_CLIENT_ENDPOINT)) {
             // Single client endpoint case
             const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT)!;
@@ -150,22 +140,5 @@ export class ServerEndpointStreamable extends ServerEndpoint {
             app.get('/:server/mcp', this.handleSessionRequest);
             app.delete('/:server/mcp', this.handleSessionRequest);
         }
-
-        this.server.listen(port, host, () => {
-            logger.debug(`Streamable server endpoint listening on http://${host}:${port}`);
-        });
-    }
-
-    async stop(terminateProcess: boolean = true): Promise<void> {
-        if (this.server) {
-            logger.debug('Shutting down streamable server endpoint');
-            await new Promise<void>((resolve) => {
-                this.server!.close(() => {
-                    logger.debug('Streamable server endpoint shut down successfully');
-                    resolve();
-                });
-            });
-        }
-        await super.stop(terminateProcess);
     }
 }

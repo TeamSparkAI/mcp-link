@@ -18,6 +18,8 @@ export class StdioSession extends BaseSession<StdioServerTransport> {
 }
 
 export class ServerEndpointStdio extends ServerEndpoint {
+    readonly type = 'stdio' as const;
+
     constructor(config: ServerEndpointConfig, sessionManager: SessionManagerImpl) {
         super(config, sessionManager);
     }
