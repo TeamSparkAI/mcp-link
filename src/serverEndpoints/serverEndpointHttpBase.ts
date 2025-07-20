@@ -32,20 +32,29 @@ export abstract class ServerEndpointHttpBase extends ServerEndpoint {
         // Call the abstract method to set up routes
         await this.startAppRoutes(app, messageProcessor);
 
-        this.server.listen(configPort, host, () => {
-            const address = this.server!.address();
-            if (address && typeof address === 'object' && 'port' in address) {
-                this.port = address.port;
-            } else if (configPort !== 0) {
-                this.port = configPort;
-            }
-            logger.info(`${this.type} server endpoint listening on http://${host}:${this.port}`);
+        // Wait for the server to start listening (and determine port) before resolving
+        await new Promise<void>((resolve, reject) => {
+            this.server!.listen(configPort, host, () => {
+                const address = this.server!.address();
+                if (address && typeof address === 'object' && 'port' in address) {
+                    this.port = address.port;
+                } else if (configPort !== 0) {
+                    this.port = configPort;
+                }
+                logger.info(`${this.type} server endpoint listening on http://${host}:${this.port}`);
+                resolve();
+            });
+
+            // Handle potential errors during server startup
+            this.server!.on('error', (error) => {
+                reject(error);
+            });
         });
     }
 
     async stop(terminateProcess: boolean = true): Promise<void> {
         if (this.server) {
-            logger.debug(`Shutting down ${this.type} server endpoint`);
+            logger.info(`Shutting down ${this.type} server endpoint`);
             await new Promise<void>((resolve) => {
                 this.server!.close(() => {
                     logger.info(`${this.type} server endpoint shut down successfully`);
