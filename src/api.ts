@@ -3,7 +3,7 @@ import { ServerEndpoint } from "./serverEndpoints/serverEndpoint";
 import { createServerEndpoint } from "./serverEndpoints/serverEndpointFactory";
 import { SessionManagerImpl } from "./serverEndpoints/sessionManager";
 import { ClientEndpointConfig, LogLevel, ServerEndpointConfig } from "./types/config";
-import logger from "./logger";
+import logger, { setLogLevel } from "./logger";
 import { MessageProcessor } from "./types/messageProcessor";
 import { MessageProcessorWrapper } from "./messageProcessorWrapper";
 import { ClientEndpointLogEntry } from "./clientEndpoints/clientEndpoint";
@@ -12,7 +12,8 @@ export { ServerEndpoint, ClientEndpoint, ClientEndpointLogEntry };
 
 export async function startBridge(server: ServerEndpointConfig, clients: ClientEndpointConfig[], messageProcessor?: MessageProcessor, logLevel?: LogLevel) : Promise<ServerEndpoint> {
     if (logLevel) {
-        logger.level = logLevel;
+        setLogLevel(logLevel);
+        server.logLevel = logLevel;
     }
 
     logger.debug('Starting bridge in mode:', server.mode);
