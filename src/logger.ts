@@ -12,8 +12,8 @@ const levels = {
 
 // Define level based on environment
 const level = () => {
-    const env = process.env.NODE_ENV || 'development';
-    return env === 'development' ? 'debug' : 'info';
+    const env = process.env.MCP_BRIDGE_LOG_LEVEL;
+    return env ?? 'info';
 };
 
 // Define colors for each level

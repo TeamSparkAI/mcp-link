@@ -1,6 +1,4 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors';
-import { createServer } from 'http';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
