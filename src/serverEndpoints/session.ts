@@ -92,7 +92,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         if (this.messageProcessor) {
             message = await this.messageProcessor.forwardMessageToServer(this.serverName, this.sessionId, message, this.authPayload);
         }
-        await this.clientEndpoint.sendMessage(message);
+        await this.clientEndpoint.sendMessage(this, message);
     }
     
     async returnMessageToClient(message: JSONRPCMessage): Promise<void> {
@@ -113,7 +113,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         await this.transport.close();
         // Then close the client endpoint
         logger.debug('Closing session for client endpoint');
-        await this.clientEndpoint.closeSession();
+        await this.clientEndpoint.closeSession(this);
     }
 
     async onClientEndpointClose(): Promise<void> {

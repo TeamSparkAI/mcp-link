@@ -9,7 +9,7 @@ import logger from "../logger";
 export class ClientEndpointSse extends ClientEndpoint {
     private endpoint: URL;
     private headers: Record<string, string>;
-    private sseClient: SSEClientTransport | null = null;
+    private transports: Map<string, SSEClientTransport> = new Map();
   
     constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
         super(config, sessionManager);
@@ -75,38 +75,48 @@ export class ClientEndpointSse extends ClientEndpoint {
         }
     }
 
-    async startSession(session: Session): Promise<void> {  
-        // Connect to the SSE endpoint
+    async startSession(session: Session): Promise<void> {
         logger.debug(`Connecting to SSE client endpoint: ${this.endpoint}`);
-        this.sseClient = this.createTransport();
-        await this.sseClient.start();
+        const sseClient = this.createTransport();
+        await sseClient.start();
+        this.transports.set(session.id, sseClient);
 
-        this.sseClient.onmessage = async (message: JSONRPCMessage) => {
+        sseClient.onmessage = async (message: JSONRPCMessage) => {
             logger.debug(`Received message from SSE client endpoint: ${message}`);
             await session.returnMessageToClient(message);
         };
-  
-        this.sseClient.onerror = async (error: Error) => {
+
+        sseClient.onerror = async (error: Error) => {
             logger.error(`SSE client - Server Error: ${error}`);
             const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
             await session.returnMessageToClient(errorMessage);
         };
 
-        this.sseClient.onclose = async () => {
+        sseClient.onclose = async () => {
             logger.debug('SSE client session closed');
             await session.onClientEndpointClose();
+            this.transports.delete(session.id);
         };
     }
-  
-    async sendMessage(message: JSONRPCMessage): Promise<void> {
-        if (this.sseClient) {
+
+    async sendMessage(session: Session, message: JSONRPCMessage): Promise<void> {
+        const sseClient = this.transports.get(session.id);
+        if (sseClient) {
             logger.debug(`Forwarding message to SSE client endpoint: ${message}`);
-            this.sseClient.send(message);
+            sseClient.send(message);
+        } else {
+            logger.error('No SSE client transport found for session:', session.id);
         }
     }
-   
-    async closeSession(): Promise<void> {
-        await this.sseClient?.close();
-        this.sseClient = null;
+
+    async closeSession(session: Session): Promise<void> {
+        logger.debug('Closing SSE client endpoint for session:', session.id);
+        const sseClient = this.transports.get(session.id);
+        if (sseClient) {
+            await sseClient.close();
+            this.transports.delete(session.id);
+        } else {
+            logger.debug('No SSE client transport to close for session:', session.id);
+        }
     }
 }

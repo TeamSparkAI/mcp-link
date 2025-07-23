@@ -9,8 +9,7 @@ import logger from "../logger";
 export class ClientEndpointStdio extends ClientEndpoint {
     private command: string;
     private args: string[];
-    private stdioClient: StdioClientTransport | null = null;
-    private pendingMessageId: number | null = null;
+    private transports: Map<string, { transport: StdioClientTransport, pendingMessageId: number | null }> = new Map();
   
     constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
         super(config, sessionManager);
@@ -26,63 +25,68 @@ export class ClientEndpointStdio extends ClientEndpoint {
         logger.debug('Connecting to stdio client endpoint:', this.command);
         const params: StdioServerParameters = { command: this.command, args: this.args };
         params.stderr = 'pipe';
-        this.stdioClient = new StdioClientTransport(params);
+        const stdioClient = new StdioClientTransport(params);
+        const entry = { transport: stdioClient, pendingMessageId: null as number | null };
+        this.transports.set(session.id, entry);
 
-        if (this.stdioClient.stderr) {  
-            this.stdioClient.stderr.on('data', (data: Buffer) => {
+        if (stdioClient.stderr) {  
+            stdioClient.stderr.on('data', (data: Buffer) => {
                 const logEntry = data.toString().trim();
                 logger.error('[mcp-link] stderr:', logEntry);
                 this.logEvent(logEntry);
             });
         }
 
-        await this.stdioClient.start();
+        await stdioClient.start();
 
-        this.stdioClient.onmessage = async (message: JSONRPCMessage) => {
+        stdioClient.onmessage = async (message: JSONRPCMessage) => {
             logger.debug('Received message from stdio client endpoint:', message);
-            if ('id' in message && typeof message.id === 'number' && message.id === this.pendingMessageId) {
-                this.pendingMessageId = null;
+            if ('id' in message && typeof message.id === 'number' && message.id === entry.pendingMessageId) {
+                entry.pendingMessageId = null;
             }
             await session.returnMessageToClient(message);
         };
 
-        this.stdioClient.onerror = async (error: Error) => {
+        stdioClient.onerror = async (error: Error) => {
             logger.error('Stdio client - Server Error:', error);
             const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
             await session.returnMessageToClient(errorMessage);
         };
 
-        this.stdioClient.onclose = async () => {
+        stdioClient.onclose = async () => {
             logger.debug('Stdio client session closed (server terminated)');
-            if (this.pendingMessageId !== null) {
+            if (entry.pendingMessageId !== null) {
                 // We closed (the server terminated) with a pending message, so we need to return an error to the client for that
                 // message (or the client won't terminate properly or with a decent error message).
-                await session.returnMessageToClient(jsonRpcError('Server closed with message pending', {id: this.pendingMessageId}));
-                this.pendingMessageId = null;
+                await session.returnMessageToClient(jsonRpcError('Server closed with message pending', {id: entry.pendingMessageId}));
+                entry.pendingMessageId = null;
             }
             await session.onClientEndpointClose();
+            this.transports.delete(session.id);
         };
     }
   
-    async sendMessage(message: JSONRPCMessage): Promise<void> {
-        if (this.stdioClient) {
+    async sendMessage(session: Session, message: JSONRPCMessage): Promise<void> {
+        const entry = this.transports.get(session.id);
+        if (entry) {
             logger.debug('Forwarding message to stdio client endpoint:', message);
             if ('id' in message && typeof message.id === 'number') {
-                this.pendingMessageId = message.id;
+                entry.pendingMessageId = message.id;
             }
-            this.stdioClient.send(message);
+            entry.transport.send(message);
+        } else {
+            logger.error('No stdio client transport found for session:', session.id);
         }
     }
    
-    async closeSession(): Promise<void> {
-        logger.debug('Closing stdio client endpoint');
-        if (this.stdioClient) {
-            logger.debug('StdioClient exists, calling close()');
-            await this.stdioClient.close();
-            logger.debug('StdioClient close() completed');
+    async closeSession(session: Session): Promise<void> {
+        logger.debug('Closing stdio client endpoint for session:', session.id);
+        const entry = this.transports.get(session.id);
+        if (entry) {
+            await entry.transport.close();
+            this.transports.delete(session.id);
         } else {
-            logger.debug('No StdioClient to close');
+            logger.debug('No stdio client transport to close for session:', session.id);
         }
-        this.stdioClient = null;
     }
 }

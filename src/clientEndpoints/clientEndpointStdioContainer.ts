@@ -17,6 +17,7 @@ export class ClientEndpointStdioContainer extends ClientEndpoint {
     private args: string[];
     private container: Container | null = null;
     private stdinStream: NodeJS.ReadWriteStream | null = null;
+    private sessions: Map<string, { container: Container, stdin: NodeJS.ReadWriteStream, pendingMessageId: number | null, stdout: PassThrough, stderr: PassThrough }> = new Map();
   
     constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
         super(config, sessionManager);
@@ -102,7 +103,7 @@ export class ClientEndpointStdioContainer extends ClientEndpoint {
         });
     }
 
-    async initializeContainer(image: string, session: Session): Promise<{ container: Container, stdin: NodeJS.ReadWriteStream }> {
+    async initializeContainer(image: string, session: Session): Promise<{ container: Container, stdin: NodeJS.ReadWriteStream, stdout: PassThrough, stderr: PassThrough }> {
         try {
             logger.debug('Creating new container:', image);
             const options: ContainerCreateOptions = {
@@ -150,47 +151,45 @@ export class ClientEndpointStdioContainer extends ClientEndpoint {
             logger.debug('[initializeContainer] Setting up message handling');
             this.setupMessageHandling(stdout, session);
 
-            if (stderr) {
-                logger.debug('[mcp-link-container] Setting up stderr logging');
-                stderr.on('data', (data: Buffer) => {
-                    const logEntry = data.toString().trim();
-                    logger.error('[mcp-link-container] stderr:', logEntry);
-                    this.logEvent(logEntry);
-                });
-            }
-
-            logger.debug('Container initialized and ready');
-            return { container, stdin: stream };
+            return { container, stdin: stream, stdout, stderr };
         } catch (error) {
-            logger.error('Error initializing container', image, error);
+            logger.error('Error initializing container:', error);
             throw error;
         }
     }
     
     async startSession(session: Session): Promise<void> {
         logger.debug('[startSession] Starting session');
-        const { container, stdin } = await this.initializeContainer(this.image, session);
+        const { container, stdin, stdout, stderr } = await this.initializeContainer(this.image, session);
+        let pendingMessageId: number | null = null;
+        this.sessions.set(session.id, { container, stdin, pendingMessageId, stdout, stderr });
         logger.debug('[startSession] Container initialized, setting up session');
-        this.container = container;
-        this.stdinStream = stdin;
         logger.debug('[startSession] Session setup complete');
     }
-  
-    async sendMessage(message: JSONRPCMessage): Promise<void> {
-        if (this.stdinStream) {
+
+    async sendMessage(session: Session, message: JSONRPCMessage): Promise<void> {
+        const entry = this.sessions.get(session.id);
+        if (entry) {
             const wireMessage = serializeMessage(message);
             logger.debug('Forwarding message to container stdin:', wireMessage);
-            this.stdinStream.write(wireMessage);
+            if ('id' in message && typeof message.id === 'number') {
+                entry.pendingMessageId = message.id;
+            }
+            entry.stdin.write(wireMessage);
+        } else {
+            logger.error('No container session found for session:', session.id);
         }
     }
-  
-    async closeSession(): Promise<void> {
-        if (this.stdinStream) {
-            this.stdinStream.end();
-            this.stdinStream = null;
+
+    async closeSession(session: Session): Promise<void> {
+        const entry = this.sessions.get(session.id);
+        if (entry) {
+            entry.stdin.end();
+            await entry.container.stop();
+            await entry.container.remove();
+            this.sessions.delete(session.id);
+        } else {
+            logger.debug('No container session to close for session:', session.id);
         }
-        await this.container?.stop();
-        await this.container?.remove();
-        this.container = null;
     }
 }

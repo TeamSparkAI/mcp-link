@@ -20,8 +20,8 @@ export abstract class ClientEndpoint {
     }
 
     abstract startSession(session: Session): Promise<void>;
-    abstract sendMessage(message: JSONRPCMessage): Promise<void>;
-    abstract closeSession(): Promise<void>;
+    abstract sendMessage(session: Session,message: JSONRPCMessage): Promise<void>;
+    abstract closeSession(session: Session): Promise<void>;
 
     protected logEvent(message: string) {
         this.logEvents.push(new ClientEndpointLogEntry(new Date(), message));

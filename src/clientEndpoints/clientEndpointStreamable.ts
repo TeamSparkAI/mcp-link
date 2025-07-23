@@ -9,7 +9,7 @@ import logger from "../logger";
 export class ClientEndpoiontStreamable extends ClientEndpoint {
     private endpoint: URL;
     private headers: Record<string, string>;
-    private streamableClient: StreamableHTTPClientTransport | null = null;
+    private transports: Map<string, StreamableHTTPClientTransport> = new Map();
   
     constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
         super(config, sessionManager);
@@ -22,32 +22,32 @@ export class ClientEndpoiontStreamable extends ClientEndpoint {
 
     async startSession(session: Session): Promise<void> {
         try {
-            // Create a new transport for this session
             logger.debug(`Connecting to Streamable client endpoint: ${this.endpoint}`);
-            this.streamableClient = new StreamableHTTPClientTransport(this.endpoint, {
+            const streamableClient = new StreamableHTTPClientTransport(this.endpoint, {
                 requestInit: {
                     headers: this.headers
                 }
             });
+            this.transports.set(session.id, streamableClient);
 
-            this.streamableClient.onmessage = async (message: JSONRPCMessage) => {
+            streamableClient.onmessage = async (message: JSONRPCMessage) => {
                 logger.debug(`Received message from Streamable client endpoint: ${message}`);
                 await session.returnMessageToClient(message);
             };
         
-            this.streamableClient.onerror = async (error: Error) => {
+            streamableClient.onerror = async (error: Error) => {
                 logger.error(`Streamable client - Server Error: ${error}`);
                 const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
                 await session.returnMessageToClient(errorMessage);
             };
 
-            this.streamableClient.onclose = async () => {
+            streamableClient.onclose = async () => {
                 logger.debug('Streamable client session closed');
                 await session.onClientEndpointClose();
+                this.transports.delete(session.id);
             };
 
-            // Start the transport
-            await this.streamableClient.start();
+            await streamableClient.start();
             logger.debug('Connected to streamable client endpoint for session:', session.id);
         } catch (error) {
             logger.error('Error starting streaming session:', error);
@@ -55,15 +55,24 @@ export class ClientEndpoiontStreamable extends ClientEndpoint {
         }
     }
 
-    async sendMessage(message: JSONRPCMessage): Promise<void> {
-        if (this.streamableClient) {
+    async sendMessage(session: Session, message: JSONRPCMessage): Promise<void> {
+        const streamableClient = this.transports.get(session.id);
+        if (streamableClient) {
             logger.debug(`Forwarding message to Streamable client endpoint: ${message}`);
-            this.streamableClient.send(message);
+            streamableClient.send(message);
+        } else {
+            logger.error('No Streamable client transport found for session:', session.id);
         }
     }
-  
-    async closeSession(): Promise<void> {
-        await this.streamableClient?.close();
-        this.streamableClient = null;
+
+    async closeSession(session: Session): Promise<void> {
+        logger.debug('Closing Streamable client endpoint for session:', session.id);
+        const streamableClient = this.transports.get(session.id);
+        if (streamableClient) {
+            await streamableClient.close();
+            this.transports.delete(session.id);
+        } else {
+            logger.debug('No Streamable client transport to close for session:', session.id);
+        }
     }
 } 
