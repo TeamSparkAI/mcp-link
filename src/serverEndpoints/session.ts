@@ -96,12 +96,14 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
 
     // Attempt to update the client endpoint in place (including renegotiating the MCP session, if one is active)
     async updateClientEndpoint(clientEndpoint: ClientEndpoint): Promise<void> {
+        logger.debug('[Session] Updating client endpoint to:', clientEndpoint);
         await this.clientEndpoint.closeSession(this);
         this.clientEndpoint = clientEndpoint;
         await this.clientEndpoint.startSession(this);
 
         if (this.initMessage) {
             // Resend the initialize message (if there is one recorded)
+            logger.debug('[Session] Resending initialize message to server (while reconfiguring client endpoint):', this.initMessage);
             this.isReconfiguring = true;
             await this.forwardMessageToServer(this.initMessage);
         }
@@ -144,17 +146,20 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
             // Is this message an init response that matches the stored init response?
             if (messagesEqual(message, this.initResponse)) {
                 // Complete initialization
+                logger.debug('[Session] Got matching initialize response (while reconfiguring client endpoint), sending initialized notification to client');
                 await this.clientEndpoint.sendMessage(this, {
                     jsonrpc: '2.0',
                     method: 'notifications/initialized'
                 });
                 // Send any pending message (received while we were reconfiguring)
                 if (this.pendingMessage) {
+                    logger.debug('[Session] Sending pending message to client (while reconfiguring client endpoint):', this.pendingMessage);
                     await this.clientEndpoint.sendMessage(this, this.pendingMessage);
                     this.pendingMessage = undefined;
                 }
             } else {
                 // If we get an init response with different payload, or any other message, then we need to send a fatal error to the client
+                logger.error('[Session] Received init response with different payload (while reconfiguring client endpoint), sending fatal error to client:', message);
                 await this.clientEndpoint.sendMessage(this, {
                     jsonrpc: '2.0',
                     id: 'error',
