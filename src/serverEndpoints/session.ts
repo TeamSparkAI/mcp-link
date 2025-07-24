@@ -105,7 +105,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
             // Resend the initialize message (if there is one recorded)
             logger.debug('[Session] Resending initialize message to server (while reconfiguring client endpoint):', this.initMessage);
             this.isReconfiguring = true;
-            await this.forwardMessageToServer(this.initMessage);
+            await this.clientEndpoint.sendMessage(this, this.initMessage);
         }
     }
 
