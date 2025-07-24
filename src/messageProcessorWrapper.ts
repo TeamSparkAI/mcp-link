@@ -16,7 +16,7 @@ export class MessageProcessorWrapper implements AuthorizedMessageProcessor {
         return undefined;
     }
 
-    async forwardMessageToServer(serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage> {
+    async forwardMessageToServer(serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage | null> {
         if ('authorize' in this.processor) {
             return this.processor.forwardMessageToServer(serverName, sessionId, message, authPayload);
         }
@@ -24,7 +24,7 @@ export class MessageProcessorWrapper implements AuthorizedMessageProcessor {
         return this.processor.forwardMessageToServer(serverName, sessionId, message);
     }
 
-    async returnMessageToClient(serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage> {
+    async returnMessageToClient(serverName: string | null, sessionId: string, message: JSONRPCMessage, authPayload: any): Promise<JSONRPCMessage | null> {
         if ('authorize' in this.processor) {
             return this.processor.returnMessageToClient(serverName, sessionId, message, authPayload);
         }

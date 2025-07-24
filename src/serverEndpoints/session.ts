@@ -129,12 +129,12 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         }
 
         logger.debug('[Session] Forwarding message to server (via client endpoint):', message);
-
+        let finalMessage: JSONRPCMessage | null = message;
         if (this.messageProcessor) {
-            message = await this.messageProcessor.forwardMessageToServer(this.serverName, this.sessionId, message, this.authPayload);
+            finalMessage = await this.messageProcessor.forwardMessageToServer(this.serverName, this.sessionId, message, this.authPayload);
         }
-        if (message) {
-            await this.clientEndpoint.sendMessage(this, message);
+        if (finalMessage) {  
+            await this.clientEndpoint.sendMessage(this, finalMessage);
         }
     }
     
@@ -175,11 +175,12 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         }
 
         logger.debug('[Session] Sending response to client (via server endpoint):', message);
+        let finalMessage: JSONRPCMessage | null = message;
         if (this.messageProcessor) {
-            message = await this.messageProcessor.returnMessageToClient(this.serverName, this.sessionId, message, this.authPayload);
+            finalMessage = await this.messageProcessor.returnMessageToClient(this.serverName, this.sessionId, message, this.authPayload);
         }
-        if (message) {
-            await this.transport.send(message);
+        if (finalMessage) {
+            await this.transport.send(finalMessage);
         }
     }
 
