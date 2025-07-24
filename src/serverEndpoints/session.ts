@@ -142,7 +142,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         if (!this.isActive) return;
         if (this.isReconfiguring) {
             // Is this message an init response that matches the stored init response?
-            if (this.messagesEqual(message, this.initResponse)) {
+            if (messagesEqual(message, this.initResponse)) {
                 // Complete initialization
                 await this.clientEndpoint.sendMessage(this, {
                     jsonrpc: '2.0',
