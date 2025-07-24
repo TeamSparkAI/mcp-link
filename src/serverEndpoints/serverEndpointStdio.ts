@@ -19,6 +19,7 @@ export class StdioSession extends BaseSession<StdioServerTransport> {
 
 export class ServerEndpointStdio extends ServerEndpoint {
     readonly type = 'stdio' as const;
+    private session: StdioSession | null = null;
 
     constructor(config: ServerEndpointConfig, sessionManager: SessionManagerImpl) {
         super(config, sessionManager);
@@ -32,6 +33,15 @@ export class ServerEndpointStdio extends ServerEndpoint {
         }
     }
 
+    // Update the client endpoint in place, including the session (if it exists) - only supported for stdio (which has a single session)
+    async updateClientEndpoint(clientEndpoint: ClientEndpointConfig): Promise<void> {
+        const newClientEndpoint = createClientEndpoint(clientEndpoint);
+        this.clientEndpoints.set(this.ONLY_CLIENT_ENDPOINT, newClientEndpoint);
+        if (this.session) {
+            await this.session.updateClientEndpoint(newClientEndpoint);
+        }
+    }
+
     async start(messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
         logger.info('Starting stdio transport');
 
@@ -40,22 +50,26 @@ export class ServerEndpointStdio extends ServerEndpoint {
             throw new Error('Stdio server endpoint has no client endpoints condfigured, failed to start');
         }
 
-        const session = new StdioSession(clientEndpoint, messageProcessor);
-        this.sessionManager.addSession(session);
+        if (this.session) {
+            throw new Error('Stdio server endpoint already has a session, failed to start');
+        }
 
-        session.on('clientEndpointClose', () => {
-            logger.debug('Client endpoint closed for stdio session:', session.id);
-            this.sessionManager.removeSession(session.id);
+        this.session = new StdioSession(clientEndpoint, messageProcessor);
+        this.sessionManager.addSession(this.session);
+
+        this.session.on('clientEndpointClose', () => {
+            logger.debug('Client endpoint closed for stdio session:', this.session!.id);
+            this.sessionManager.removeSession(this.session!.id);
         });
 
-        const transport = session.transport;
+        const transport = this.session.transport;
         transport.onmessage = (message: JSONRPCMessage) => {
             logger.debug('Stdio server transport - received message', message);
-            session.forwardMessageToServer(message);
+            this.session?.forwardMessageToServer(message);
         };
 
         try {
-            await session.start();
+            await this.session.start();
         } catch (error) {
             logger.error('Failed to start stdio transport:', error);
             process.exit(1);

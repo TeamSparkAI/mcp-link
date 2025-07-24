@@ -5,7 +5,6 @@ import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ReadBuffer, serializeMessage } from "@modelcontextprotocol/sdk/shared/stdio";
 import { PassThrough } from 'stream';
 import { ClientEndpointConfig } from "../types/config";
-import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
 const docker = new Docker();
@@ -15,12 +14,10 @@ export class ClientEndpointStdioContainer extends ClientEndpoint {
     private volumes: string[];
     private env: Record<string, string>;
     private args: string[];
-    private container: Container | null = null;
-    private stdinStream: NodeJS.ReadWriteStream | null = null;
-    private sessions: Map<string, { container: Container, stdin: NodeJS.ReadWriteStream, pendingMessageId: number | null, stdout: PassThrough, stderr: PassThrough }> = new Map();
+    private entries: Map<string, { session: Session, container: Container, stdin: NodeJS.ReadWriteStream, pendingMessageId: number | null, stdout: PassThrough, stderr: PassThrough }> = new Map();
   
-    constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
-        super(config, sessionManager);
+    constructor(config: ClientEndpointConfig) {
+        super(config);
         if (!config.containerImage) {
             throw new Error('Client container image is required');
         }
@@ -46,9 +43,9 @@ export class ClientEndpointStdioContainer extends ClientEndpoint {
                 if (event.Type === 'container' && event.Action === 'die') {
                     const containerSessionId = event.Actor.Attributes['mcp.sessionId'];
                     logger.debug('Container stopped for sessionId:', containerSessionId);
-                    const session = this.sessionManager.getSession(containerSessionId);
-                    if (session) {
-                        session.onClientEndpointClose();
+                    const entry = this.entries.get(containerSessionId);
+                    if (entry) {
+                        entry.session.onClientEndpointClose();
                     }
                 }
             });
@@ -162,13 +159,13 @@ export class ClientEndpointStdioContainer extends ClientEndpoint {
         logger.debug('[startSession] Starting session');
         const { container, stdin, stdout, stderr } = await this.initializeContainer(this.image, session);
         let pendingMessageId: number | null = null;
-        this.sessions.set(session.id, { container, stdin, pendingMessageId, stdout, stderr });
+        this.entries.set(session.id, { session, container, stdin, pendingMessageId, stdout, stderr });
         logger.debug('[startSession] Container initialized, setting up session');
         logger.debug('[startSession] Session setup complete');
     }
 
     async sendMessage(session: Session, message: JSONRPCMessage): Promise<void> {
-        const entry = this.sessions.get(session.id);
+        const entry = this.entries.get(session.id);
         if (entry) {
             const wireMessage = serializeMessage(message);
             logger.debug('Forwarding message to container stdin:', wireMessage);
@@ -182,12 +179,12 @@ export class ClientEndpointStdioContainer extends ClientEndpoint {
     }
 
     async closeSession(session: Session): Promise<void> {
-        const entry = this.sessions.get(session.id);
+        const entry = this.entries.get(session.id);
         if (entry) {
             entry.stdin.end();
             await entry.container.stop();
             await entry.container.remove();
-            this.sessions.delete(session.id);
+            this.entries.delete(session.id);
         } else {
             logger.debug('No container session to close for session:', session.id);
         }

@@ -1,6 +1,4 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors';
-import { createServer } from 'http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp';
 import { ClientEndpoint } from '../clientEndpoints/clientEndpoint';
 import { BaseSession, jsonRpcError } from './session';

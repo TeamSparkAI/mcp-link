@@ -22,7 +22,7 @@ export abstract class ServerEndpoint {
 
     async addClientEndpoint(name: string, clientEndpoint: ClientEndpointConfig): Promise<void> {
         logger.info(`Adding client endpoint ${name}`);
-        this.clientEndpoints.set(name, createClientEndpoint(clientEndpoint, this.sessionManager));
+        this.clientEndpoints.set(name, createClientEndpoint(clientEndpoint));
     }
 
     async removeClientEndpoint(name: string): Promise<void> {
@@ -40,6 +40,10 @@ export abstract class ServerEndpoint {
 
     async setClientEndpoint(clientEndpoint: ClientEndpointConfig): Promise<void> {
         this.addClientEndpoint(this.ONLY_CLIENT_ENDPOINT, clientEndpoint);
+    }
+
+    async updateClientEndpoint(clientEndpoint: ClientEndpointConfig): Promise<void> {
+        throw new Error('Not implemented');
     }
 
     getClientEndpoint(name: string): ClientEndpoint | undefined {

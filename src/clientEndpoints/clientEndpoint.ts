@@ -11,16 +11,14 @@ export class ClientEndpointLogEntry {
 
 export abstract class ClientEndpoint {
     protected config: ClientEndpointConfig;
-    protected sessionManager: SessionManager;
     protected logEvents: ClientEndpointLogEntry[] = [];
 
-    constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
+    constructor(config: ClientEndpointConfig) {
         this.config = config;
-        this.sessionManager = sessionManager;
     }
 
     abstract startSession(session: Session): Promise<void>;
-    abstract sendMessage(session: Session,message: JSONRPCMessage): Promise<void>;
+    abstract sendMessage(session: Session, message: JSONRPCMessage): Promise<void>;
     abstract closeSession(session: Session): Promise<void>;
 
     protected logEvent(message: string) {

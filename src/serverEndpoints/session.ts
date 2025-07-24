@@ -6,14 +6,18 @@ import logger from '../logger';
 import { AuthorizedMessageProcessor, MessageProcessor } from "../types/messageProcessor";
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types';
 
-
-
 export function jsonRpcError(message: string, { id, code = ErrorCode.InternalError }: { id?: number, code?: number } = {} ): JSONRPCMessage {
     return {
         jsonrpc: '2.0',
         id: id ?? "error",
         error: { code, message }
     };
+}
+
+function messagesEqual(message1: JSONRPCMessage, message2: JSONRPCMessage | undefined): boolean {
+    if (!message2) return false;
+    // In this particular case, it should be fine to require the messages to be exactly the same
+    return JSON.stringify(message1) === JSON.stringify(message2);
 }
 
 export interface Session {
@@ -49,6 +53,13 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     private messageProcessor?: AuthorizedMessageProcessor;
     private authPayload?: any;
 
+    // State we need for reconfiguring the session with a new client endpoint
+    private initMessage?: JSONRPCMessage;
+    private initMessageId: string | number | null = null;
+    private initResponse?: JSONRPCMessage;
+    private pendingMessage?: JSONRPCMessage;
+    private isReconfiguring: boolean = false;
+
     constructor(sessionId: string, clientEndpoint: ClientEndpoint, transport: T, transportType: string, serverName: string | null, messageProcessor?: AuthorizedMessageProcessor) {
         super();
         this.sessionId = sessionId;
@@ -83,6 +94,19 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         }
     }
 
+    // Attempt to update the client endpoint in place (including renegotiating the MCP session, if one is active)
+    async updateClientEndpoint(clientEndpoint: ClientEndpoint): Promise<void> {
+        await this.clientEndpoint.closeSession(this);
+        this.clientEndpoint = clientEndpoint;
+        await this.clientEndpoint.startSession(this);
+
+        if (this.initMessage) {
+            // Resend the initialize message (if there is one recorded)
+            this.isReconfiguring = true;
+            await this.forwardMessageToServer(this.initMessage);
+        }
+    }
+
     async authorize(authHeader: string | null): Promise<any> {
         if (this.messageProcessor) {
             this.authPayload = await this.messageProcessor.authorize(this.serverName, authHeader);
@@ -91,20 +115,72 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
 
     async forwardMessageToServer(message: JSONRPCMessage): Promise<void> {
         if (!this.isActive) return;
+
+        // If this is the first initialize message, store it and return
+        if (!this.initMessage && 'id' in message && 'method' in message && message.method === 'initialize') {
+            this.initMessageId = message.id;
+            this.initMessage = message;
+        }
+
+        if (this.isReconfiguring) {
+            logger.debug('[Session] Recieved message while reconfiguring client endpoint, holding for reconfiguration to complete:', message);
+            this.pendingMessage = message;
+            return;
+        }
+
         logger.debug('[Session] Forwarding message to server (via client endpoint):', message);
+
         if (this.messageProcessor) {
             message = await this.messageProcessor.forwardMessageToServer(this.serverName, this.sessionId, message, this.authPayload);
         }
-        await this.clientEndpoint.sendMessage(this, message);
+        if (message) {
+            await this.clientEndpoint.sendMessage(this, message);
+        }
     }
     
     async returnMessageToClient(message: JSONRPCMessage): Promise<void> {
         if (!this.isActive) return;
+        if (this.isReconfiguring) {
+            // Is this message an init response that matches the stored init response?
+            if (this.messagesEqual(message, this.initResponse)) {
+                // Complete initialization
+                await this.clientEndpoint.sendMessage(this, {
+                    jsonrpc: '2.0',
+                    method: 'notifications/initialized'
+                });
+                // Send any pending message (received while we were reconfiguring)
+                if (this.pendingMessage) {
+                    await this.clientEndpoint.sendMessage(this, this.pendingMessage);
+                    this.pendingMessage = undefined;
+                }
+            } else {
+                // If we get an init response with different payload, or any other message, then we need to send a fatal error to the client
+                await this.clientEndpoint.sendMessage(this, {
+                    jsonrpc: '2.0',
+                    id: 'error',
+                    error: {
+                        code: ErrorCode.InternalError,
+                        message: 'Failed to renegotiate MCP session (server changed or failed to respond to initialize)'
+                    }
+                });
+            }
+
+            this.isReconfiguring = false;
+            return;
+        }
+
+        // If this is the response to the stored initialize message, store it and return
+        if (!this.initResponse && 'id' in message && message.id === this.initMessageId) {
+            this.initResponse = message;
+        }
+
         logger.debug('[Session] Sending response to client (via server endpoint):', message);
         if (this.messageProcessor) {
             message = await this.messageProcessor.returnMessageToClient(this.serverName, this.sessionId, message, this.authPayload);
         }
-        await this.transport.send(message);
+        if (message) {
+            await this.transport.send(message);
+        }
     }
 
     async close(): Promise<void> {

@@ -3,7 +3,6 @@ import { ClientEndpoint } from "./clientEndpoint";
 import { jsonRpcError, Session } from "../serverEndpoints/session";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ClientEndpointConfig } from "../types/config";
-import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
 export class ClientEndpointStdio extends ClientEndpoint {
@@ -11,8 +10,8 @@ export class ClientEndpointStdio extends ClientEndpoint {
     private args: string[];
     private transports: Map<string, { transport: StdioClientTransport, pendingMessageId: number | null }> = new Map();
   
-    constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
-        super(config, sessionManager);
+    constructor(config: ClientEndpointConfig) {
+        super(config);
         if (!config.command) {
             throw new Error('Client command is required');
         }

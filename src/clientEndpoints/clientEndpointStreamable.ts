@@ -3,7 +3,6 @@ import { ErrorCode, JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ClientEndpoint } from "./clientEndpoint";
 import { jsonRpcError, Session } from "../serverEndpoints/session";
 import { ClientEndpointConfig } from "../types/config";
-import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
 
 export class ClientEndpoiontStreamable extends ClientEndpoint {
@@ -11,8 +10,8 @@ export class ClientEndpoiontStreamable extends ClientEndpoint {
     private headers: Record<string, string>;
     private transports: Map<string, StreamableHTTPClientTransport> = new Map();
   
-    constructor(config: ClientEndpointConfig, sessionManager: SessionManager) {
-        super(config, sessionManager);
+    constructor(config: ClientEndpointConfig) {
+        super(config);
         if (!config.endpoint) {
             throw new Error('Client endpoint is required');
         }
