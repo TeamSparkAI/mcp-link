@@ -97,6 +97,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     // Attempt to update the client endpoint in place (including renegotiating the MCP session, if one is active)
     async updateClientEndpoint(clientEndpoint: ClientEndpoint): Promise<void> {
         logger.debug('[Session] Updating client endpoint to:', clientEndpoint);
+        this.isReconfiguring = true;
         await this.clientEndpoint.closeSession(this);
         this.clientEndpoint = clientEndpoint;
         await this.clientEndpoint.startSession(this);
@@ -104,8 +105,10 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
         if (this.initMessage) {
             // Resend the initialize message (if there is one recorded)
             logger.debug('[Session] Resending initialize message to server (while reconfiguring client endpoint):', this.initMessage);
-            this.isReconfiguring = true;
             await this.clientEndpoint.sendMessage(this, this.initMessage);
+        } else {
+            // If we don't have a previous initialize message, the client hasn't done protocol init, so we don't have to fake it (we're in the correct state)
+            this.isReconfiguring = false;
         }
     }
 
@@ -204,9 +207,12 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     }
 
     async onClientEndpointClose(): Promise<void> {
-        logger.debug(`Client endpoint closed for ${this.transportType} session ${this.sessionId}`);
-        await this.close();
-        // Server transports will be listening - they will remove the session from the session manager and do any other protocol-specific cleanup
-        this.emit('clientEndpointClose');
+        // If we're reconfiguring, we're going to swap a new client endpoint in place, so we don't want to close the session
+        if (!this.isReconfiguring) {
+            logger.debug(`Client endpoint closed for ${this.transportType} session ${this.sessionId}`);
+            await this.close();
+            // Server transports will be listening - they will remove the session from the session manager and do any other protocol-specific cleanup
+            this.emit('clientEndpointClose');
+        }
     }
 }
