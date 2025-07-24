@@ -71,7 +71,7 @@ export class ServerEndpointSse extends ServerEndpointHttpBase {
         const session = this.sessionManager.getSession(sessionId);
         if (!session) {
             logger.error('No active session for sessionId:', sessionId);
-            res.status(400).send('No active session');
+            res.status(401).send('Auth failed, no active session');
             return;
         }
 

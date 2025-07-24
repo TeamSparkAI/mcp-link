@@ -98,14 +98,22 @@ export class ServerEndpointStreamable extends ServerEndpointHttpBase {
 
     private handleSessionRequest = async (req: Request, res: Response): Promise<void> => {
         const sessionId = req.headers['mcp-session-id'] as string | undefined;
-        if (!sessionId || !this.sessionManager.getSession(sessionId)) {
-            res.status(400).send('Invalid or missing session ID');
+
+        if (!sessionId) {
+            logger.error('No sessionId in request');
+            res.status(400).send('No sessionId provided');
             return;
         }
 
-        const session = this.sessionManager.getSession(sessionId)! as StreamableSession;
+        const session = this.sessionManager.getSession(sessionId)
+        if (!session) {
+            logger.error('No active session for sessionId:', sessionId);
+            res.status(401).send('Auth failed, no active session');
+            return;
+        }
+
         logger.debug('handleSessionRequest, sessionId:', sessionId, req.body);
-        await session.transport.handleRequest(req, res);
+        await (session as StreamableSession).transport.handleRequest(req, res);
     }
 
     protected async startAppRoutes(app: express.Application, messageProcessor?: AuthorizedMessageProcessor): Promise<void> {

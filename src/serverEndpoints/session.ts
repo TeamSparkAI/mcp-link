@@ -4,8 +4,11 @@ import { Transport } from "@modelcontextprotocol/sdk/shared/transport";
 import { EventEmitter } from 'events';
 import logger from '../logger';
 import { AuthorizedMessageProcessor, MessageProcessor } from "../types/messageProcessor";
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types';
 
-export function jsonRpcError(message: string, { id, code = -32000 }: { id?: number, code?: number } = {} ): JSONRPCMessage {
+
+
+export function jsonRpcError(message: string, { id, code = ErrorCode.InternalError }: { id?: number, code?: number } = {} ): JSONRPCMessage {
     return {
         jsonrpc: '2.0',
         id: id ?? "error",

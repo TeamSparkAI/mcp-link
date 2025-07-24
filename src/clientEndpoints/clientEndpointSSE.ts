@@ -1,7 +1,7 @@
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse";
 import { ClientEndpoint } from "./clientEndpoint";
 import { jsonRpcError, Session } from "../serverEndpoints/session";
-import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
+import { ErrorCode, JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { ClientEndpointConfig } from "../types/config";
 import { SessionManager } from "../serverEndpoints/sessionManager";
 import logger from "../logger";
@@ -88,7 +88,30 @@ export class ClientEndpointSse extends ClientEndpoint {
 
         sseClient.onerror = async (error: Error) => {
             logger.error(`SSE client - Server Error: ${error}`);
-            const errorMessage: JSONRPCMessage = jsonRpcError(error.toString());
+            let errorMessage: JSONRPCMessage | null = null;
+            const connectionErrorSignals = [
+                "terminated: other side closed",
+                "stream disconnected",
+                "Maximum reconnect attempts"
+            ];
+            if (connectionErrorSignals.some(signal => error?.message?.includes(signal))) {
+                // We get a connection closed from the other end, send that along to the client as a structured ConnectionClosed error
+                errorMessage = jsonRpcError(error.toString(), { code: ErrorCode.ConnectionClosed });
+            } else {
+                // If error.message exists, attempt to extract error code and process
+                //   SSE client - Server Error: Error: SSE error: Non-200 status code (400)
+                //   SSE client - Server Error: Error: Error POSTing to endpoint (HTTP 400): No active session
+                const httpErrorCode = error?.message?.match(/\((?:HTTP )?(\d+)\)/)?.[1];
+                if (httpErrorCode === '401') {
+                    // We get a 401 on invalid auth (including invalid session, which can happen on client endpoint restart).  Send that
+                    // along to the client as a structured Unauthorized error (to cause disconnect and ideally reconnect).
+                    errorMessage = jsonRpcError(error.toString(), { code: ErrorCode.ConnectionClosed });
+                }
+            }
+
+            if (!errorMessage) {
+                errorMessage = jsonRpcError(error.toString());
+            }
             await session.returnMessageToClient(errorMessage);
         };
 
