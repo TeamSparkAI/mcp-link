@@ -39,8 +39,17 @@ export class ClientEndpointSse extends ClientEndpoint {
             logger.debug(`[ClientEndpointSSE] onEventSourceInit, fetchCount: ${fetchCount}`);
             fetchCount++;
             if (fetchCount > 1) {
-                // !!! Do whatever we need to do to trigger reconnect
-                return new Response(null, { status: 400, statusText: 'SSE Connection terminated, will reconnect on next message' });
+                logger.error('SSE Connection terminated, returning 401 to trigger restart (reconnect, auth, and protocol init)');
+                return new Response(
+                    JSON.stringify({ reason: 'SSE Connection terminated: reconnect, auth, and protocol init required' }),
+                    {
+                        status: 401,
+                        statusText: 'SSE Connection terminated: reconnect, auth, and protocol init required',
+                        headers: {
+                           'Content-Type': 'application/json'
+                        }
+                    }
+                );
             } else {
                 return fetch(url.toString(), { ...init, headers });
             }
@@ -86,6 +95,7 @@ export class ClientEndpointSse extends ClientEndpoint {
         };
 
         sseClient.onerror = async (error: Error) => {
+            if (!error) return; // We see unexplained unddefined error from time to time (right before a legit error)
             logger.error(`SSE client - Server Error: ${error}`);
             let errorMessage: JSONRPCMessage | null = null;
             const connectionErrorSignals = [
