@@ -116,6 +116,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     }
 
     async forwardMessageToServer(message: JSONRPCMessage): Promise<void> {
+        logger.debug('[Session] Forwarding message to server - isActive:', this.isActive, 'isReconfiguring:', this.isReconfiguring, 'message:', message);
         if (!this.isActive) return;
 
         // If this is the first initialize message, store it and return
@@ -141,6 +142,7 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
     }
     
     async returnMessageToClient(message: JSONRPCMessage): Promise<void> {
+        logger.debug('[Session] Returning message to client - isActive:', this.isActive, 'isReconfiguring:', this.isReconfiguring, 'message:', message);
         if (!this.isActive) return;
         if (this.isReconfiguring) {
             // Is this message an init response that matches the stored init response?

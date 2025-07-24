@@ -90,7 +90,7 @@ export class ClientEndpointSse extends ClientEndpoint {
         this.transports.set(session.id, sseClient);
 
         sseClient.onmessage = async (message: JSONRPCMessage) => {
-            logger.debug(`Received message from SSE client endpoint: ${message}`);
+            logger.debug(`Received message from SSE client endpoint: ${JSON.stringify(message)}`);            
             await session.returnMessageToClient(message);
         };
 
@@ -134,7 +134,7 @@ export class ClientEndpointSse extends ClientEndpoint {
     async sendMessage(session: Session, message: JSONRPCMessage): Promise<void> {
         const sseClient = this.transports.get(session.id);
         if (sseClient) {
-            logger.debug(`Forwarding message to SSE client endpoint: ${message}`);
+            logger.debug(`Forwarding message to SSE client endpoint: ${JSON.stringify(message)}`);
             sseClient.send(message);
         } else {
             logger.error('No SSE client transport found for session:', session.id);
