@@ -31,6 +31,7 @@ export class ServerEndpointStreamable extends ServerEndpointHttpBase {
         let transport: StreamableHTTPServerTransport;
 
         logger.debug('POST /mcp sessionId', sessionId);
+        logger.debug('POST /mcp req.headers', JSON.stringify(req.headers));
         logger.debug('POST /mcp req.body', JSON.stringify(req.body));
         logger.debug('POST /mcp isInitializeRequest', isInitializeRequest(req.body));
 
