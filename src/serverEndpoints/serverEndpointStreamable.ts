@@ -31,18 +31,17 @@ export class ServerEndpointStreamable extends ServerEndpointHttpBase {
         let transport: StreamableHTTPServerTransport;
 
         logger.debug('POST /mcp sessionId', sessionId);
-        /*
-        if (sessionId) {
-            logger.debug('POST /mcp hasSessions', this.sessionManager.getSession(sessionId!));
-        }
-        */
+        logger.debug('POST /mcp req.body', JSON.stringify(req.body));
+        logger.debug('POST /mcp isInitializeRequest', isInitializeRequest(req.body));
 
         if (sessionId && this.sessionManager.getSession(sessionId)) {
             // Reuse existing transport
+            logger.debug('POST /mcp found and using existing session');
             const session = this.sessionManager.getSession(sessionId)! as StreamableSession;
             transport = session.transport;
         } else if (!sessionId && isInitializeRequest(req.body)) {
             // New initialization request
+            logger.debug('POST /mcp new initialization (session) request');
             const newSessionId = `streaming-${Date.now()}`;
             transport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: () => newSessionId,
