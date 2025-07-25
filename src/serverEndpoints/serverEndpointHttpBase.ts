@@ -26,7 +26,9 @@ export abstract class ServerEndpointHttpBase extends ServerEndpoint {
 
         const app = express();
         this.server = createServer(app);
-        app.use(cors());
+        app.use(cors({
+            exposedHeaders: ['mcp-session-id', 'content-type', 'content-length']
+          }));
         app.use(express.json());
 
         // Call the abstract method to set up routes
