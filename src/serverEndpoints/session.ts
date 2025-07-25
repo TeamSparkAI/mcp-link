@@ -128,17 +128,18 @@ export abstract class BaseSession<T extends Transport = Transport> extends Event
             this.initMessage = message;
         }
 
-        if (this.isReconfiguring) {
-            logger.debug('[Session] Recieved message while reconfiguring client endpoint, holding for reconfiguration to complete:', message);
-            this.pendingMessage = message;
-            return;
-        }
-
         logger.debug('[Session] Forwarding message to server (via client endpoint):', message);
         let finalMessage: JSONRPCMessage | null = message;
         if (this.messageProcessor) {
             finalMessage = await this.messageProcessor.forwardMessageToServer(this.serverName, this.sessionId, message, this.authPayload);
         }
+
+        if (this.isReconfiguring && finalMessage) {
+            logger.debug('[Session] Recieved message while reconfiguring client endpoint, holding for reconfiguration to complete:', message);
+            this.pendingMessage = finalMessage;
+            return;
+        }
+
         if (finalMessage) {  
             await this.clientEndpoint.sendMessage(this, finalMessage);
         }
