@@ -83,9 +83,13 @@ export class ServerEndpointStreamable extends ServerEndpointHttpBase {
 
             this.sessionManager.addSession(session);
             await session.start();
+        } else if (!sessionId) {
+            // No session ID provided on non-initialization message
+            res.status(400).json(jsonRpcError('Bad Request: No session ID provided'));
+            return;
         } else {
-            // Invalid request
-            res.status(400).json(jsonRpcError('Bad Request: No valid session ID provided'));
+            // Invalid session ID
+            res.status(401).json(jsonRpcError('Auth failed: no active session for session ID: ' + sessionId));
             return;
         }
 
@@ -106,7 +110,7 @@ export class ServerEndpointStreamable extends ServerEndpointHttpBase {
         const session = this.sessionManager.getSession(sessionId)
         if (!session) {
             logger.error('No active session for sessionId:', sessionId);
-            res.status(401).send('Auth failed, no active session');
+            res.status(401).send('Auth failed, no active session: ' + sessionId);
             return;
         }
 

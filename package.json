@@ -1,6 +1,6 @@
 {
   "name": "mcp-link",
-  "version": "1.2.19",
+  "version": "1.2.20",
   "description": "An MCP Link (Bridge) SDK and command line application",
   "main": "dist/api.js",
   "types": "dist/api.d.ts",
