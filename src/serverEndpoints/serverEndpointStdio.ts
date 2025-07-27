@@ -43,7 +43,7 @@ export class ServerEndpointStdio extends ServerEndpoint {
     }
 
     async start(messageProcessor?: AuthorizedMessageProcessor): Promise<void> {
-        logger.info('Starting stdio transport');
+        logger.debug('Starting stdio transport');
 
         const clientEndpoint = this.clientEndpoints.get(this.ONLY_CLIENT_ENDPOINT);
         if (!clientEndpoint ) {

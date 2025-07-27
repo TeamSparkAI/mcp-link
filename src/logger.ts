@@ -6,8 +6,8 @@ const levels = {
     error: 0,
     warn: 1,
     info: 2,
-    http: 3,
-    debug: 4,
+    debug: 3,
+    trace: 4,
 };
 
 // Define level based on environment
@@ -21,8 +21,8 @@ const colors = {
     error: 'red',
     warn: 'yellow',
     info: 'green',
-    http: 'magenta',
     debug: 'white',
+    trace: 'cyan',
 };
 
 // Add colors to winston
@@ -49,15 +49,15 @@ const format = winston.format.combine(
 const transports = [
     // Console transport for all logs - using stderr (so we can use stdout for program output in stdio mode)
     new winston.transports.Console({
-        stderrLevels: ['error', 'warn', 'info', 'http', 'debug']
+        stderrLevels: ['error', 'warn', 'info', 'debug', 'trace']
     }),
     // Error transport for error logs
     new winston.transports.File({
-        filename: 'logs/error.log',
+        filename: 'logs/mcp-link-error.log',
         level: 'error',
     }),
     // Combined transport for all logs
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.File({ filename: 'logs/mcp-link.log' }),
 ];
 
 // Create the logger
@@ -68,9 +68,16 @@ const logger = winston.createLogger({
     transports,
 });
 
+// Add the trace method to the actual logger object
+(logger as any).trace = (message: string, ...meta: any[]) => {
+    logger.log('trace', message, ...meta);
+};
+
 // Function to update log level
 export function setLogLevel(level: LogLevel) {
     logger.level = level;
 }
 
-export default logger; 
+export default logger as winston.Logger & {
+    trace(message: string, ...meta: any[]): void;
+}; 

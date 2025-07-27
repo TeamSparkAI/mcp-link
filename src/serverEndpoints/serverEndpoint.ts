@@ -21,12 +21,12 @@ export abstract class ServerEndpoint {
     }
 
     async addClientEndpoint(name: string, clientEndpoint: ClientEndpointConfig): Promise<void> {
-        logger.info(`Adding client endpoint ${name}`);
+        logger.debug(`Adding client endpoint ${name}`);
         this.clientEndpoints.set(name, createClientEndpoint(clientEndpoint));
     }
 
     async removeClientEndpoint(name: string): Promise<void> {
-        logger.info(`Removing client endpoint ${name}`);
+        logger.debug(`Removing client endpoint ${name}`);
         // Find, close, and remove all sessions for this client endpoint
         const sessions = this.sessionManager.getSessions();
         for (const session of sessions) {
@@ -57,7 +57,7 @@ export abstract class ServerEndpoint {
     abstract start(messageProcessor?: AuthorizedMessageProcessor): Promise<void>;
 
     async stop(terminateProcess: boolean = true): Promise<void> {
-        logger.info(`Stopping ${this.type} transport`);
+        logger.debug(`Stopping ${this.type} transport`);
         try {
             // Close all sessions (which will close their client endpoints)
             const sessions = this.sessionManager.getSessions();

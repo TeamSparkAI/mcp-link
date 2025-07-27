@@ -22,7 +22,7 @@ export abstract class ServerEndpointHttpBase extends ServerEndpoint {
         const host = this.config.host || 'localhost';
         const configPort = this.config.port || 0;
 
-        logger.info(`Starting ${this.type} server transport on port ${configPort}, preconfigured client endpoints: ${this.clientEndpoints.size}`);
+        logger.debug(`Starting ${this.type} server transport on port ${configPort}, preconfigured client endpoints: ${this.clientEndpoints.size}`);
 
         const app = express();
         this.server = createServer(app);
@@ -56,7 +56,7 @@ export abstract class ServerEndpointHttpBase extends ServerEndpoint {
 
     async stop(terminateProcess: boolean = true): Promise<void> {
         if (this.server) {
-            logger.info(`Shutting down ${this.type} server endpoint`);
+            logger.debug(`Shutting down ${this.type} server endpoint`);
             await new Promise<void>((resolve) => {
                 this.server!.closeAllConnections();
                 this.server!.close(() => {

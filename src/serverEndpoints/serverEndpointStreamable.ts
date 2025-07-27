@@ -57,7 +57,7 @@ export class ServerEndpointStreamable extends ServerEndpointHttpBase {
     
             // Clean up transport when closed
             transport.onclose = async () => {
-                logger.info('Streamable connection closed for session ID:', transport.sessionId);
+                logger.debug('Streamable connection closed for session ID:', transport.sessionId);
                 if (transport.sessionId) {
                     const session = this.sessionManager.getSession(transport.sessionId);
                     if (session) {

@@ -8,11 +8,11 @@ async function runBridge() {
         // Create a logging message processor as an example...
         const messageProcessor = {
             forwardMessageToServer: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
-                logger.info('[MessageProcessor] Forwarding message to server', message);``
+                logger.debug('[MessageProcessor] Forwarding message to server', message);``
                 return message;
             },
             returnMessageToClient: async (serverName: string | null, sessionId: string, message: JSONRPCMessage) => {
-                logger.info('[MessageProcessor] Returning message to client', message);
+                logger.debug('[MessageProcessor] Returning message to client', message);
                 return message;
             }
         }   

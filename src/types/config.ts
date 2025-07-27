@@ -3,7 +3,7 @@ import { MessageProcessor } from "./messageProcessor";
 export type BridgeServerMode = 'sse' | 'stdio' | 'streamable';
 export type BridgeClientMode = 'stdio' | 'sse' | 'streamable' | 'stdio-container';
 
-export type LogLevel = 'error' | 'warn' | 'info' | 'http' | 'debug';
+export type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'trace';
 
 export interface ContainerVolume {
     source: string;
